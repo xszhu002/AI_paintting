@@ -34,7 +34,8 @@ git push -u origin master
 
 echo.
 echo 完成！
-echo 请确保在GitHub仓库中设置DOCKERHUB_USERNAME和DOCKERHUB_TOKEN密钥
+echo 代码已推送到GitHub，GitHub Actions将自动构建Docker镜像并推送到GitHub Container Registry
+echo 完成后，你可以在GitHub仓库的Packages选项卡查看Docker镜像
 echo 详情请参考 GITHUB_ACTIONS_SETUP.md
 echo.
 

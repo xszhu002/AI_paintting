@@ -1,6 +1,6 @@
 # GitHub Actions 自动构建Docker镜像指南
 
-本项目使用GitHub Actions自动构建Docker镜像并推送到Docker Hub。
+本项目使用GitHub Actions自动构建Docker镜像并推送到GitHub Container Registry (GHCR)。
 
 ## 设置步骤
 
@@ -9,29 +9,19 @@
 1. 登录GitHub，创建一个新仓库 `xszhu002/AI_paintting`
 2. 将本地代码推送到该仓库
 
-### 2. 设置Docker Hub访问令牌
+### 2. 使用GitHub Token访问GitHub Container Registry
 
-1. 登录Docker Hub
-2. 点击右上角的用户名，选择 "Account Settings"
-3. 在左侧菜单中选择 "Security"
-4. 点击 "New Access Token"
-5. 输入一个描述性名称，如 "GitHub Actions"
-6. 选择适当的权限（至少需要 "Read & Write" 权限）
-7. 点击 "Generate"，并保存生成的令牌（这是唯一一次能看到完整令牌的机会）
+GitHub Actions已经预配置为使用GitHub自动生成的`GITHUB_TOKEN`访问GitHub Container Registry，无需额外设置任何密钥。GitHub自动为每个Actions工作流程创建这个临时令牌。
 
-### 3. 在GitHub仓库中设置Secrets
+### 3. 确保镜像仓库可见性设置
 
-1. 在GitHub上打开你的仓库
-2. 点击 "Settings" 选项卡
-3. 在左侧菜单中选择 "Secrets and variables" -> "Actions"
-4. 点击 "New repository secret"
-5. 添加以下两个secrets:
-   - 名称: `DOCKERHUB_USERNAME`，值: 你的Docker Hub用户名
-   - 名称: `DOCKERHUB_TOKEN`，值: 在步骤2中生成的访问令牌
+1. 完成首次推送镜像后，前往GitHub Container Registry
+2. 找到 `ghcr.io/xszhu002/ai_paintting` 包
+3. 如需要，点击 "Package Settings" 并调整可见性设置 (默认与仓库相同)
 
 ### 4. 推送代码触发构建
 
-现在，每当你推送代码到main或master分支时，GitHub Actions会自动构建Docker镜像并推送到Docker Hub。
+现在，每当你推送代码到main或master分支时，GitHub Actions会自动构建Docker镜像并推送到GitHub Container Registry。
 
 ```bash
 # 初始化Git仓库（如果尚未初始化）
@@ -62,8 +52,28 @@ git push -u origin master
 
 ## 验证构建结果
 
-构建完成后，你可以在Docker Hub上查看新推送的镜像：
+构建完成后，你可以在GitHub Container Registry上查看新推送的镜像：
 
+1. 前往你的GitHub仓库
+2. 点击"Packages"选项卡
+3. 查看 `ai_paintting` 包
+
+或直接访问：
 ```
-https://hub.docker.com/r/xszhu002/ai_paintting/tags
-``` 
+https://github.com/xszhu002/AI_paintting/pkgs/container/ai_paintting
+```
+
+## 使用Docker镜像
+
+要从GitHub Container Registry拉取镜像：
+
+```bash
+docker pull ghcr.io/xszhu002/ai_paintting:latest
+```
+
+如果是私有镜像，需要先登录：
+
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+docker pull ghcr.io/xszhu002/ai_paintting:latest
+```

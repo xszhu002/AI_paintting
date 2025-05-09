@@ -14,7 +14,7 @@
 
 ### 方法1：使用GitHub Actions自动构建（推荐）
 
-本项目已配置GitHub Actions自动构建流程，每当代码推送到GitHub仓库时，会自动构建Docker镜像并推送到Docker Hub。
+本项目已配置GitHub Actions自动构建流程，每当代码推送到GitHub仓库时，会自动构建Docker镜像并推送到GitHub Container Registry (GHCR)。
 
 详细设置步骤请参考 [GitHub Actions 自动构建Docker镜像指南](GITHUB_ACTIONS_SETUP.md)。
 
@@ -28,11 +28,11 @@ git clone https://github.com/xszhu002/AI_paintting.git
 cd AI_paintting
 
 # 构建Docker镜像
-docker build -t xszhu002/ai_paintting:latest .
+docker build -t ghcr.io/xszhu002/ai_paintting:latest .
 
-# 推送到Docker Hub（需要先登录）
-docker login
-docker push xszhu002/ai_paintting:latest
+# 推送到GitHub Container Registry（需要先登录）
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+docker push ghcr.io/xszhu002/ai_paintting:latest
 ```
 
 ## 部署步骤
@@ -50,13 +50,13 @@ docker push xszhu002/ai_paintting:latest
 
 ### 2. 在Unraid上部署Docker容器
 
-#### 方法1：使用Docker Hub镜像
+#### 方法1：使用GitHub Container Registry镜像
 
 1. 在Unraid管理界面中，点击"Docker"选项卡
 2. 点击"Add Container"按钮
 3. 填写以下信息：
    - Name: `ai_painting`
-   - Repository: `xszhu002/ai_paintting:latest`
+   - Repository: `ghcr.io/xszhu002/ai_paintting:latest`
    - Network Type: `Bridge`
    - 端口映射:
      - 容器端口: `8080` -> 主机端口: `8080`
@@ -79,7 +79,7 @@ version: '3'
 
 services:
   ai_painting:
-    image: xszhu002/ai_paintting:latest
+    image: ghcr.io/xszhu002/ai_paintting:latest
     ports:
       - "8080:8080"
       - "8000:8000"
@@ -105,7 +105,7 @@ services:
 如果应用无法连接到MongoDB，请检查：
 
 1. MongoDB容器是否正常运行
-2. MONGO_URI环境变量是否正确设置
+2. MONGO_HOST环境变量是否正确设置
 3. MongoDB是否允许外部连接
 4. 网络设置是否正确
 
@@ -113,6 +113,15 @@ services:
 
 ```bash
 docker logs ai_painting
+```
+
+### 镜像拉取问题
+
+如果无法拉取GitHub Container Registry的镜像，可能需要先登录：
+
+```bash
+# 在Unraid终端中执行
+docker login ghcr.io -u YOUR_GITHUB_USERNAME -p YOUR_GITHUB_TOKEN
 ```
 
 ### 端口冲突
