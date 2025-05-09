@@ -10,14 +10,23 @@ import queue
 import json
 import requests
 import random
+import gc
+import signal
+import concurrent.futures
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 import hashlib
 import jwt
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from bson import json_util
+
+# 设置线程池最大工作线程数
+MAX_WORKER_THREADS = int(os.environ.get('MAX_WORKER_THREADS', '10'))
+# 设置全局线程池
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKER_THREADS)
 
 def check_and_fix_database(db_client, gallery_collection):
     """检查并修复数据库结构"""
@@ -115,9 +124,37 @@ def root_options_handler():
     return handle_preflight_request()
 
 # MongoDB连接设置
+def get_mongo_connection():
+    """获取MongoDB连接，支持重试机制"""
+    max_retries = 5
+    retry_delay = 3  # 秒
+    
+    for attempt in range(max_retries):
+        try:
+            mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/')
+            # 设置连接超时和线程池配置
+            client = MongoClient(
+                mongo_uri,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=10000,
+                serverSelectionTimeoutMS=10000,
+                maxPoolSize=MAX_WORKER_THREADS,  # 限制连接池大小
+                waitQueueTimeoutMS=5000,
+                connect=True
+            )
+            # 测试连接
+            client.admin.command('ping')
+            return client
+        except ConnectionFailure as e:
+            if attempt < max_retries - 1:
+                print(f"MongoDB连接失败 (尝试 {attempt+1}/{max_retries}): {e}")
+                time.sleep(retry_delay)
+            else:
+                print(f"MongoDB连接失败，已达到最大重试次数: {e}")
+                raise
+
 try:
-    mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/')
-    mongo_client = MongoClient(mongo_uri)
+    mongo_client = get_mongo_connection()
     db = mongo_client['ai_art_gallery']
     school_gallery = db['school_gallery']
     users = db['users']  # 新增用户集合
@@ -154,8 +191,9 @@ except Exception as e:
     sensitive_word_logs = None
     custom_sensitive_words = None
 
-# 请求队列和锁
-request_queue = queue.Queue()
+# 请求队列和线程池配置
+REQUEST_QUEUE_SIZE = int(os.environ.get('REQUEST_QUEUE_SIZE', '100'))
+request_queue = queue.Queue(maxsize=REQUEST_QUEUE_SIZE)
 queue_lock = threading.Lock()
 pending_requests = {}  # 存储待处理请求的状态 {request_id: {status, result, ...}}
 
@@ -164,13 +202,40 @@ queue_stats = {
     'total_processed': 0,
     'total_errors': 0,
     'processing_time': 0,
+    'worker_threads': MAX_WORKER_THREADS,
 }
+
+# 资源清理函数
+def cleanup_resources():
+    """关闭和清理资源"""
+    print("开始清理资源...")
+    if mongo_client:
+        mongo_client.close()
+        print("MongoDB连接已关闭")
+    
+    # 关闭线程池
+    executor.shutdown(wait=False)
+    print("线程池已关闭")
+    
+    # 强制GC回收
+    gc.collect()
+    print("资源清理完成")
+
+# 注册信号处理
+def signal_handler(sig, frame):
+    print(f"接收到信号 {sig}，正在优雅退出...")
+    cleanup_resources()
+    exit(0)
+
+# 注册信号处理函数
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 # Pollinations API地址
 POLLINATIONS_API = "https://image.pollinations.ai/prompt/"
 
 # JWT密钥
-JWT_SECRET = "ai_drawing_gallery_secret_key"  # 实际应用中应使用环境变量存储
+JWT_SECRET = os.environ.get('JWT_SECRET', "ai_drawing_gallery_secret_key")  # 使用环境变量
 
 # 生成JWT令牌
 def generate_admin_token(admin_id):
@@ -465,119 +530,63 @@ def check_and_log_sensitive_words(prompt, student_id, provided_words=None, provi
         }
 
 def process_queue():
-    """
-    处理队列中的请求，每5秒处理一个
-    """
-    print("队列处理线程已启动")
-    
+    """处理请求队列的线程函数"""
+    print("队列处理线程启动")
     while True:
         try:
-            # 尝试从队列获取一个请求
-            if not request_queue.empty():
+            # 使用线程池执行任务
+            request_id, prompt, prompt_dict = request_queue.get(timeout=1)
+            
+            # 更新请求状态为处理中
+            with queue_lock:
+                if request_id in pending_requests:
+                    pending_requests[request_id]['status'] = 'processing'
+            
+            start_time = time.time()
+            
+            try:
+                # 使用线程池提交任务
+                future = executor.submit(
+                    generate_image, 
+                    prompt_dict['prompt'],
+                    prompt_dict.get('width', 1024),
+                    prompt_dict.get('height', 1024),
+                    prompt_dict.get('style', '')
+                )
+                
+                # 等待任务完成，最多等待60秒
+                result = future.result(timeout=60)
+                
+                # 处理结果
                 with queue_lock:
-                    request_id = request_queue.get()
-                    request_data = pending_requests[request_id]
-                    request_data['status'] = 'processing'
-                
-                print(f"正在处理请求 {request_id}, 队列中还有 {request_queue.qsize()} 个请求")
-                
-                # 处理请求
-                try:
-                    start_time = time.time()
-                    result = generate_image(request_data['prompt'], request_data.get('width', 1024), 
-                                           request_data.get('height', 1024), request_data.get('style', ''))
-                    processing_time = time.time() - start_time
-                    
-                    # 请求成功，更新请求状态
-                    with queue_lock:
+                    if request_id in pending_requests:
                         pending_requests[request_id]['status'] = 'completed'
                         pending_requests[request_id]['result'] = result
-                        pending_requests[request_id]['processing_time'] = processing_time
                         queue_stats['total_processed'] += 1
-                        queue_stats['processing_time'] += processing_time
-                    
-                    # 将作品保存到MongoDB
-                    if mongo_client is not None and school_gallery is not None:
-                        try:
-                            # 创建作品数据，确保in_school_gallery字段为0，表示默认不显示在学校画廊
-                            # 重要：不设置approved字段！只有管理员审核时才应设置此字段
-                            artwork_data = {
-                                'image_url': result['image_url'],
-                                'prompt': request_data['prompt'],
-                                'chinese_prompt': request_data.get('chinese_prompt', ''),  # 保存中文提示词
-                                'style': request_data.get('style', ''),
-                                'width': request_data.get('width', 1024),
-                                'height': request_data.get('height', 1024),
-                                'timestamp': time.time(),
-                                'request_id': request_id,
-                                'in_school_gallery': 0,  # 默认为0，不显示在学校画廊中
-                                'likes': 0,              # 确保likes字段存在
-                                'submission_type': 'user',  # 确保submission_type字段存在
-                                'seed': result.get('seed', None),  # 保存种子到数据库
-                                'ip_address': request_data.get('ip_address', ''),  # 保存IP地址
-                                'student_name': request_data.get('student_name', ''),  # 保存学生姓名
-                                'student_id': request_data.get('student_id', '')  # 保存学生ID
-                            }
-                            
-                            # 检查是否已存在相同image_url的记录，避免创建重复记录
-                            existing_record = school_gallery.find_one({'image_url': result['image_url']})
-                            if existing_record:
-                                print(f"警告：已存在相同image_url的记录，ID: {existing_record['_id']}")
-                                # 更新现有记录，但不设置approved字段
-                                update_data = {
-                                    'prompt': request_data['prompt'],
-                                    'chinese_prompt': request_data.get('chinese_prompt', ''),  # 更新中文提示词
-                                    'style': request_data.get('style', ''),
-                                    'width': request_data.get('width', 1024),
-                                    'height': request_data.get('height', 1024),
-                                    'timestamp': time.time(),
-                                    'request_id': request_id,
-                                    'in_school_gallery': 0,  # 重要：确保为0
-                                    'seed': result.get('seed', None),  # 更新种子到数据库
-                                    'ip_address': request_data.get('ip_address', ''),  # 更新IP地址
-                                    'student_name': request_data.get('student_name', ''),  # 更新学生姓名
-                                    'student_id': request_data.get('student_id', '')  # 更新学生ID
-                                }
-                                
-                                # 如果现有记录已有approved字段，需要移除它
-                                if 'approved' in existing_record:
-                                    school_gallery.update_one(
-                                        {'_id': existing_record['_id']},
-                                        {
-                                            '$set': update_data,
-                                            '$unset': {'approved': ""}
-                                        }
-                                    )
-                                else:
-                                    school_gallery.update_one(
-                                        {'_id': existing_record['_id']},
-                                        {'$set': update_data}
-                                    )
-                                print(f"已更新现有记录，而非创建新记录: {existing_record['_id']}")
-                            else:
-                                # 插入新记录，确保不包含approved字段
-                                insert_result = school_gallery.insert_one(artwork_data)
-                                print(f"作品已保存到MongoDB，ID: {insert_result.inserted_id}, in_school_gallery=0")
-                        except Exception as e:
-                            print(f"保存到MongoDB失败: {e}")
-                    
-                    print(f"请求 {request_id} 处理完成")
-                    
-                except Exception as e:
-                    # 请求失败，更新请求状态
-                    with queue_lock:
+                        queue_stats['processing_time'] += time.time() - start_time
+            except Exception as e:
+                print(f"处理请求 {request_id} 时出错: {e}")
+                with queue_lock:
+                    if request_id in pending_requests:
                         pending_requests[request_id]['status'] = 'error'
                         pending_requests[request_id]['error'] = str(e)
                         queue_stats['total_errors'] += 1
-                    
-                    print(f"处理请求 {request_id} 时出错: {e}")
             
-            # 不管队列是否为空，都等待5秒再继续处理
-            time.sleep(5)
+            # 标记队列任务完成
+            request_queue.task_done()
             
+            # 强制GC以回收资源
+            if queue_stats['total_processed'] % 10 == 0:
+                gc.collect()
+            
+            # 处理完一个请求后等待一小段时间
+            time.sleep(0.5)
+        except queue.Empty:
+            # 队列为空，继续等待
+            pass
         except Exception as e:
-            print(f"队列处理线程出错: {e}")
-            time.sleep(5)
+            print(f"队列处理线程异常: {e}")
+            time.sleep(1)  # 出错后短暂等待，避免CPU占用过高
 
 def generate_image(prompt, width=1024, height=1024, style=""):
     """
@@ -2358,15 +2367,13 @@ def check_suspended_users():
 
 # 启动定时任务线程
 def start_background_tasks():
-    """
-    启动所有后台任务
-    """
+    """启动所有后台任务"""
     # 启动队列处理线程
-    queue_thread = threading.Thread(target=process_queue)
-    queue_thread.daemon = True
+    queue_thread = threading.Thread(target=process_queue, name="Queue-Thread", daemon=True)
     queue_thread.start()
+    print("队列处理线程已启动")
     
-    # 启动定时检查暂停用户的线程
+    # 启动定时检查已暂停用户的线程
     def run_suspended_users_check():
         while True:
             try:
@@ -2376,11 +2383,15 @@ def start_background_tasks():
             # 每小时检查一次
             time.sleep(60 * 60)
     
-    suspended_check_thread = threading.Thread(target=run_suspended_users_check)
-    suspended_check_thread.daemon = True
-    suspended_check_thread.start()
-    
-    print("所有后台任务已启动")
+    suspension_thread = threading.Thread(target=run_suspended_users_check, name="Suspension-Thread", daemon=True)
+    suspension_thread.start()
+    print("暂停用户检查线程已启动")
+
+    # 为保险起见，设置线程为守护线程
+    for thread in threading.enumerate():
+        if thread != threading.current_thread():
+            thread.daemon = True
+            print(f"设置线程 {thread.name} 为守护线程")
 
 # 在应用启动时启动后台任务
 @app.before_first_request
@@ -3160,8 +3171,19 @@ def api_admin_restore_from_file():
 if __name__ == '__main__':
     # 启动队列处理线程
     start_background_tasks()
-    # 从环境变量获取主机和端口
+    
     host = os.environ.get('HOST', '0.0.0.0')
     port = int(os.environ.get('PORT', 8080))
-    print(f"Starting AI Art Server on host {host} port {port}...")
-    app.run(host=host, port=port, debug=False) 
+    
+    # 注册应用关闭钩子，确保资源正确释放
+    @app.teardown_appcontext
+    def teardown_resources(exception=None):
+        if mongo_client:
+            mongo_client.close()
+    
+    try:
+        app.run(host=host, port=port, threaded=True, debug=False)
+    except Exception as e:
+        print(f"启动服务器时出错: {e}")
+    finally:
+        cleanup_resources() 
