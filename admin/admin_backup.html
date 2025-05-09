@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI绘画乐园 - 数据备份还原</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="http://172.16.201.200:8000/css/admin.css">
+    <style>
+        .backup-card {
+            margin-bottom: 20px;
+        }
+        
+        .backup-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .backup-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .backup-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .backup-item.active {
+            background-color: #e9ecef;
+        }
+        
+        .backup-meta {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .backup-time {
+            font-weight: bold;
+        }
+        
+        .backup-size {
+            color: #6c757d;
+        }
+        
+        .backup-info {
+            margin-top: 5px;
+            font-size: 0.875rem;
+        }
+        
+        .card-header-action {
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-header-action .btn {
+            margin-left: 10px;
+        }
+        
+        #uploadBackupForm {
+            display: flex;
+            align-items: center;
+        }
+        
+        #uploadBackupForm .custom-file {
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .operation-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #ced4da;
+        }
+        
+        .log-time {
+            color: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边导航 -->
+            <nav class="col-md-2 d-none d-md-block bg-dark sidebar">
+                <div class="sidebar-sticky pt-3">
+                    <div class="navbar-brand text-center py-3">
+                        <h4 class="text-white">AI绘画乐园管理系统</h4>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_dashboard.html">
+                                <i class="fas fa-chart-line"></i> 控制面板
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_users.html">
+                                <i class="fas fa-users"></i> 用户管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_review.html">
+                                <i class="fas fa-images"></i> 作品审核
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="admin_backup.html">
+                                <i class="fas fa-database"></i> 备份还原
+                            </a>
+                        </li>
+                        <li class="nav-item mt-5">
+                            <a class="nav-link" href="#" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i> 退出登录
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-10 ml-sm-auto px-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+                    <h1>数据备份与还原</h1>
+                    <div>
+                        <span class="mr-2" id="adminName">管理员</span>
+                        <span class="badge badge-primary">管理员</span>
+                    </div>
+                </div>
+
+                <!-- 操作日志 -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">操作日志</h6>
+                        <button class="btn btn-sm btn-outline-secondary" id="clearLogBtn">
+                            <i class="fas fa-trash"></i> 清空日志
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="operation-log" id="operationLog">
+                            <!-- 日志条目会动态添加到这里 -->
+                            <div class="log-entry">
+                                <span class="log-time">[系统]</span>
+                                <span class="log-info">欢迎使用数据备份还原系统</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据库备份与还原 -->
+                <div class="row">
+                    <!-- 创建备份 -->
+                    <div class="col-md-6">
+                        <div class="card shadow backup-card">
+                            <div class="card-header py-3">
+                                <div class="card-header-action">
+                                    <h6 class="m-0 font-weight-bold text-primary">创建备份</h6>
+                                    <button class="btn btn-primary" id="createBackupBtn">
+                                        <i class="fas fa-save"></i> 立即备份
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p>创建数据库的完整备份，包括以下集合：</p>
+                                <ul>
+                                    <li>用户数据 (users)</li>
+                                    <li>作品数据 (school_gallery)</li>
+                                    <li>敏感词配置 (custom_sensitive_words)</li>
+                                    <li>敏感词日志 (sensitive_word_logs)</li>
+                                </ul>
+                                <p class="text-muted small">备份文件将保存在服务器的backups目录中，以当前日期时间命名。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 从文件还原 -->
+                    <div class="col-md-6">
+                        <div class="card shadow backup-card">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">从文件还原</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="uploadBackupForm">
+                                    <div class="custom-file">
+                                        <input type="file" class="custom-file-input" id="backupFile" accept=".json">
+                                        <label class="custom-file-label" for="backupFile">选择备份文件</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-upload"></i> 上传并还原
+                                    </button>
+                                </form>
+                                <div class="alert alert-warning mt-3">
+                                    <i class="fas fa-exclamation-triangle"></i> 警告：还原操作将覆盖当前数据，请谨慎操作！
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 历史备份列表 -->
+                <div class="card shadow mt-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">历史备份</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshBackupsBtn">
+                            <i class="fas fa-sync-alt"></i> 刷新列表
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="backup-list" id="backupList">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">加载中...</span>
+                                </div>
+                                <p class="mt-2">正在加载备份列表...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-danger" id="restoreSelectedBtn" disabled>
+                            <i class="fas fa-undo"></i> 从选中的备份还原
+                        </button>
+                        <button class="btn btn-outline-danger ml-2" id="deleteSelectedBtn" disabled>
+                            <i class="fas fa-trash"></i> 删除选中的备份
+                        </button>
+                        <button class="btn btn-secondary ml-2" id="downloadSelectedBtn" disabled>
+                            <i class="fas fa-download"></i> 下载选中的备份
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 确认还原模态框 -->
+    <div class="modal fade" id="confirmRestoreModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle"></i> 确认还原数据
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <p><strong>警告：</strong>此操作将会覆盖当前数据库中的内容！</p>
+                        <p>请确认您要从以下备份还原数据：</p>
+                        <div id="restoreBackupInfo"></div>
+                    </div>
+                    <p>建议在执行还原操作前先创建当前数据的备份。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning" id="confirmRestoreBtn">确认还原</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript引用 -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js"></script>
+    <script src="js/admin_common.js"></script>
+    <script src="js/admin_backup.js"></script>
+</body>
+</html> 

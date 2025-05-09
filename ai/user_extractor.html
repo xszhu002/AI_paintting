@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户信息提取器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .result-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .input-group {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 70%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .actions {
+            margin-top: 20px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        #statusMessage {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+            border-left: 4px solid #4169e1;
+        }
+    </style>
+</head>
+<body>
+    <h1>用户信息提取器</h1>
+    <p>此工具可帮助您提取当前登录的用户信息</p>
+    
+    <div id="statusMessage">正在自动获取用户信息...</div>
+    
+    <div class="input-group">
+        <label for="targetUrl">目标页面URL:</label>
+        <input type="text" id="targetUrl" value="http://172.16.201.191/student/myinfo.aspx" style="width: 70%;">
+        <button id="fetchFromSpecificPage">从指定页面获取</button>
+    </div>
+    
+    <div>
+        <button id="getCookies">获取所有Cookies</button>
+        <button id="getLocalStorage">获取LocalStorage</button>
+        <button id="getUserFromDOM">从当前页面DOM获取用户信息</button>
+        <button id="copyToClipboard">复制结果</button>
+    </div>
+    
+    <div class="result-container">
+        <h3>结果：</h3>
+        <pre id="result">正在自动获取用户信息...</pre>
+    </div>
+    
+    <div class="actions" id="actionContainer" style="display:none;">
+        <h3>发送到AI绘画平台：</h3>
+        <p>找到的用户名：<span id="foundUsername">--</span></p>
+        <button id="sendToAIPlatform">发送到AI绘画平台</button>
+        <button id="autoSendToAIPlatform">自动发送到AI绘画平台</button>
+        <p id="sendResult"></p>
+    </div>
+    
+    <!-- 引入连接器脚本 -->
+    <script src="ai_platform_connector.js"></script>
+    
+    <script>
+        // 获取结果元素
+        const resultElement = document.getElementById('result');
+        const foundUsernameElement = document.getElementById('foundUsername');
+        const actionContainer = document.getElementById('actionContainer');
+        const sendResultElement = document.getElementById('sendResult');
+        const statusMessage = document.getElementById('statusMessage');
+        
+        // 存储找到的用户名
+        let extractedUsername = null;
+        
+        // 显示操作区域并设置用户名
+        function showActionWithUsername(username) {
+            if (username) {
+                extractedUsername = username;
+                foundUsernameElement.textContent = username;
+                actionContainer.style.display = 'block';
+                
+                // 在本地存储中保存用户名，以便下次使用
+                localStorage.setItem('ai_platform_username', username);
+                
+                // 更新状态消息
+                statusMessage.textContent = `已找到用户名: ${username}`;
+                statusMessage.style.borderColor = '#4CAF50';
+                statusMessage.style.backgroundColor = '#f0fff0';
+            }
+        }
+        
+        // 自动获取用户信息的函数
+        async function autoGetUserInfo() {
+            statusMessage.textContent = '正在自动获取用户信息...';
+            
+            // 1. 首先尝试从localStorage获取之前保存的用户名
+            const savedUsername = localStorage.getItem('ai_platform_username');
+            if (savedUsername) {
+                showActionWithUsername(savedUsername);
+                resultElement.textContent = `已从本地存储中找到用户名: ${savedUsername}`;
+                return;
+            }
+            
+            // 2. 尝试从当前页面的Cookie获取
+            const username = await tryGetUsernameFromCookies();
+            if (username) {
+                showActionWithUsername(username);
+                resultElement.textContent = `已从Cookies中找到用户名: ${username}`;
+                return;
+            }
+            
+            // 3. 尝试从指定页面获取
+            const targetUrl = document.getElementById('targetUrl').value;
+            if (targetUrl) {
+                try {
+                    await fetchFromUrl(targetUrl);
+                    if (extractedUsername) {
+                        return;
+                    }
+                } catch (error) {
+                    console.error('从指定页面获取失败:', error);
+                }
+            }
+            
+            // 4. 尝试从当前页面DOM获取
+            const domUsername = await tryGetUsernameFromDOM();
+            if (domUsername) {
+                showActionWithUsername(domUsername);
+                resultElement.textContent = `已从当前页面DOM中找到用户名: ${domUsername}`;
+                return;
+            }
+            
+            // 所有方法都失败
+            statusMessage.textContent = '自动获取用户信息失败，请尝试手动点击按钮获取';
+            statusMessage.style.borderColor = '#ff8c00';
+            statusMessage.style.backgroundColor = '#fff8dc';
+            resultElement.textContent = '自动获取用户信息失败，请尝试手动点击上方按钮获取。';
+        }
+        
+        // 尝试从Cookie获取用户名
+        async function tryGetUsernameFromCookies() {
+            const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+            
+            // 尝试自动查找可能包含用户信息的cookie
+            const possibleUserCookies = cookies.filter(cookie => 
+                cookie.toLowerCase().includes('user') || 
+                cookie.toLowerCase().includes('login') || 
+                cookie.toLowerCase().includes('account') ||
+                cookie.toLowerCase().includes('session') ||
+                cookie.toLowerCase().includes('auth') ||
+                cookie.toLowerCase().includes('token')
+            );
+            
+            for (const cookie of possibleUserCookies) {
+                const parts = cookie.split('=');
+                if (parts.length === 2) {
+                    const key = parts[0].trim();
+                    const value = parts[1].trim();
+                    if (key.toLowerCase().includes('user') && value) {
+                        try {
+                            // 尝试解码可能的JSON或URL编码的值
+                            let decodedValue = value;
+                            try { decodedValue = decodeURIComponent(value); } catch(e) {}
+                            try { decodedValue = JSON.parse(decodedValue); } catch(e) {}
+                            
+                            // 如果是对象并有username属性
+                            if (typeof decodedValue === 'object' && decodedValue !== null && decodedValue.username) {
+                                return decodedValue.username;
+                            } else if (typeof decodedValue === 'string') {
+                                return decodedValue;
+                            }
+                        } catch(e) {
+                            // 解析错误，继续尝试下一个cookie
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        // 尝试从DOM获取用户名
+        function tryGetUsernameFromDOM() {
+            const possibleUserElements = [];
+            
+            // 尝试查找可能包含用户名的元素
+            const selectors = [
+                '.user-name', '.username', '.user', '#username', '#user',
+                '[data-username]', '[data-user]',
+                '.account-name', '.profile-name', '.display-name',
+                '.avatar-name', '.user-profile', '.user-info',
+                'header .user', 'nav .user',
+                '#lblXm', // 针对学生信息页面特定ID
+            ];
+            
+            for (const selector of selectors) {
+                try {
+                    const elements = document.querySelectorAll(selector);
+                    for (const el of elements) {
+                        const text = el.textContent.trim();
+                        if (text && !text.includes(':') && !text.includes('：')) {
+                            return text;
+                        }
+                    }
+                } catch (e) {}
+            }
+            
+            // 如果没找到，尝试查找包含"欢迎"的元素
+            const welcomeElements = Array.from(document.querySelectorAll('*')).filter(el => 
+                el.textContent.includes('欢迎') && el.textContent.trim().length < 100);
+            
+            for (const el of welcomeElements) {
+                const text = el.textContent.trim();
+                const match = text.match(/欢迎[，,\s]*([^，,\s!！。]+)/);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            
+            return null;
+        }
+        
+        // 从指定URL获取用户信息
+        async function fetchFromUrl(url) {
+            if (!url) {
+                return null;
+            }
+            
+            try {
+                // 使用fetch API获取页面内容
+                const response = await fetch(url, {
+                    credentials: 'include' // 包含cookies以确保获取已登录状态
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const html = await response.text();
+                
+                // 创建临时DOM解析HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                let userInfo = null;
+                let foundElement = null;
+                
+                // 首先尝试针对性查找 lblXm 元素，这在学生信息页面常见
+                const lblXm = doc.getElementById('lblXm');
+                if (lblXm && lblXm.textContent.trim()) {
+                    userInfo = lblXm.textContent.trim();
+                    foundElement = { id: 'lblXm', text: userInfo };
+                    showActionWithUsername(userInfo);
+                    resultElement.textContent = `从指定页面获取的信息:\n用户名: ${userInfo}`;
+                    return userInfo;
+                }
+                
+                // 如果没找到，尝试其他常见选择器
+                if (!userInfo) {
+                    const results = [];
+                    // 根据页面结构查找可能包含用户名的元素
+                    const allElements = doc.querySelectorAll('span, div, td, p, h1, h2, h3, h4, li');
+                    Array.from(allElements).forEach(el => {
+                        const text = el.textContent.trim();
+                        // 筛选可能是用户名的文本
+                        if (text && (
+                            text.includes('姓名') || 
+                            text.includes('用户') || 
+                            text.includes('欢迎') ||
+                            text.includes('学号')
+                        )) {
+                            results.push({
+                                element: el.tagName,
+                                id: el.id,
+                                class: el.className,
+                                text: text
+                            });
+                        }
+                    });
+                    
+                    if (results.length > 0) {
+                        // 找到了可能包含用户名的元素
+                        userInfo = "可能的用户信息元素:";
+                        let foundUsername = null;
+                        
+                        for (const item of results) {
+                            userInfo += `\n${item.element}${item.id ? '#'+item.id : ''}${item.class ? '.'+item.class : ''}: ${item.text}`;
+                            
+                            // 尝试提取用户名
+                            const usernameMatch = item.text.match(/姓名[：:]\s*([^\s,，。]+)/);
+                            if (usernameMatch && usernameMatch[1]) {
+                                foundUsername = usernameMatch[1];
+                                foundElement = { text: foundUsername };
+                                break;
+                            }
+                        }
+                        
+                        if (foundUsername) {
+                            showActionWithUsername(foundUsername);
+                            resultElement.textContent = `从指定页面获取的信息:\n用户名: ${foundUsername}\n\n${userInfo}`;
+                            return foundUsername;
+                        }
+                    }
+                }
+                
+                if (userInfo) {
+                    resultElement.textContent = `从指定页面获取的信息:\n${userInfo}`;
+                } else {
+                    resultElement.textContent = '未能在指定页面中找到明确的用户信息。尝试其他方法...';
+                }
+                
+                return null;
+            } catch (error) {
+                resultElement.textContent = `获取指定页面内容时出错: ${error.message}\n\n可能是跨域限制导致的，您需要在目标页面上运行此脚本，或使用浏览器插件。`;
+                return null;
+            }
+        }
+        
+        // 从指定页面获取用户信息
+        document.getElementById('fetchFromSpecificPage').addEventListener('click', async function() {
+            const url = document.getElementById('targetUrl').value;
+            if (!url) {
+                resultElement.textContent = '请输入目标页面URL';
+                return;
+            }
+            
+            resultElement.textContent = `正在从 ${url} 获取数据...`;
+            await fetchFromUrl(url);
+        });
+        
+        // 获取cookies
+        document.getElementById('getCookies').addEventListener('click', async function() {
+            const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+            resultElement.textContent = '所有Cookies:\n' + JSON.stringify(cookies, null, 2);
+            
+            // 尝试自动查找可能包含用户信息的cookie
+            const possibleUserCookies = cookies.filter(cookie => 
+                cookie.toLowerCase().includes('user') || 
+                cookie.toLowerCase().includes('login') || 
+                cookie.toLowerCase().includes('account') ||
+                cookie.toLowerCase().includes('session') ||
+                cookie.toLowerCase().includes('auth') ||
+                cookie.toLowerCase().includes('token')
+            );
+            
+            if (possibleUserCookies.length > 0) {
+                resultElement.textContent += '\n\n可能包含用户信息的Cookies:\n' + 
+                    JSON.stringify(possibleUserCookies, null, 2);
+                
+                // 尝试从cookie中提取用户名
+                const username = await tryGetUsernameFromCookies();
+                if (username) {
+                    showActionWithUsername(username);
+                }
+            }
+        });
+        
+        // 获取localStorage
+        document.getElementById('getLocalStorage').addEventListener('click', function() {
+            try {
+                const storageData = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    storageData[key] = localStorage.getItem(key);
+                }
+                resultElement.textContent = 'LocalStorage内容:\n' + JSON.stringify(storageData, null, 2);
+                
+                // 尝试自动查找可能包含用户信息的项
+                const possibleUserItems = Object.entries(storageData)
+                    .filter(([key, value]) => 
+                        key.toLowerCase().includes('user') || 
+                        key.toLowerCase().includes('login') || 
+                        key.toLowerCase().includes('account') ||
+                        key.toLowerCase().includes('auth') ||
+                        key.toLowerCase().includes('profile') ||
+                        (typeof value === 'string' && 
+                         (value.includes('username') || value.includes('email')))
+                    );
+                
+                if (possibleUserItems.length > 0) {
+                    const userInfoObj = Object.fromEntries(possibleUserItems);
+                    resultElement.textContent += '\n\n可能包含用户信息的项:\n' + 
+                        JSON.stringify(userInfoObj, null, 2);
+                    
+                    // 尝试从localStorage提取用户名
+                    for (const [key, value] of possibleUserItems) {
+                        try {
+                            // 尝试解析JSON
+                            let parsedValue = value;
+                            try { parsedValue = JSON.parse(value); } catch(e) {}
+                            
+                            // 检查对象中的用户名
+                            if (typeof parsedValue === 'object' && parsedValue !== null) {
+                                if (parsedValue.username) {
+                                    showActionWithUsername(parsedValue.username);
+                                    break;
+                                } else if (parsedValue.name) {
+                                    showActionWithUsername(parsedValue.name);
+                                    break;
+                                } else if (parsedValue.user) {
+                                    const user = typeof parsedValue.user === 'object' ? 
+                                        (parsedValue.user.name || parsedValue.user.username) : 
+                                        parsedValue.user;
+                                    if (user) {
+                                        showActionWithUsername(user);
+                                        break;
+                                    }
+                                }
+                            } else if (typeof value === 'string' && key.toLowerCase().includes('user')) {
+                                showActionWithUsername(value);
+                                break;
+                            }
+                        } catch(e) {
+                            // 解析错误，继续尝试下一项
+                        }
+                    }
+                }
+            } catch (e) {
+                resultElement.textContent = '获取LocalStorage失败: ' + e.message;
+            }
+        });
+        
+        // 从DOM获取用户信息
+        document.getElementById('getUserFromDOM').addEventListener('click', function() {
+            const possibleUserElements = [];
+            
+            // 尝试查找可能包含用户名的元素
+            const selectors = [
+                '.user-name', '.username', '.user', '#username', '#user',
+                '[data-username]', '[data-user]',
+                '.account-name', '.profile-name', '.display-name',
+                '.avatar-name', '.user-profile', '.user-info',
+                'header .user', 'nav .user'
+            ];
+            
+            selectors.forEach(selector => {
+                try {
+                    const elements = document.querySelectorAll(selector);
+                    elements.forEach(el => {
+                        possibleUserElements.push({
+                            selector: selector,
+                            text: el.textContent.trim(),
+                            attributes: Array.from(el.attributes).map(attr => `${attr.name}="${attr.value}"`).join(', ')
+                        });
+                    });
+                } catch (e) {}
+            });
+            
+            if (possibleUserElements.length > 0) {
+                resultElement.textContent = '可能包含用户信息的DOM元素:\n' + 
+                    JSON.stringify(possibleUserElements, null, 2);
+                
+                // 尝试提取用户名
+                for (const element of possibleUserElements) {
+                    if (element.text && !element.text.includes(':') && !element.text.includes('：')) {
+                        showActionWithUsername(element.text);
+                        break;
+                    }
+                }
+            } else {
+                // 如果没找到，尝试查找包含"欢迎"的元素
+                const welcomeElements = Array.from(document.querySelectorAll('*')).filter(el => 
+                    el.textContent.includes('欢迎') && el.textContent.trim().length < 100);
+                
+                if (welcomeElements.length > 0) {
+                    const userInfoList = welcomeElements.map(el => ({
+                        element: el.tagName,
+                        id: el.id,
+                        class: el.className,
+                        text: el.textContent.trim()
+                    }));
+                    
+                    resultElement.textContent = '可能包含用户信息的欢迎元素:\n' + 
+                        JSON.stringify(userInfoList, null, 2);
+                    
+                    // 尝试从欢迎消息中提取用户名
+                    for (const info of userInfoList) {
+                        const match = info.text.match(/欢迎[，,\s]*([^，,\s!！。]+)/);
+                        if (match && match[1]) {
+                            showActionWithUsername(match[1]);
+                            break;
+                        }
+                    }
+                } else {
+                    resultElement.textContent = '未找到可能包含用户信息的DOM元素。尝试从其他来源获取，或者提供特定的选择器。';
+                }
+            }
+        });
+        
+        // 复制结果
+        document.getElementById('copyToClipboard').addEventListener('click', function() {
+            const text = resultElement.textContent;
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    alert('结果已复制到剪贴板');
+                })
+                .catch(err => {
+                    alert('复制失败: ' + err);
+                });
+        });
+        
+        // 发送到AI平台
+        document.getElementById('sendToAIPlatform').addEventListener('click', async function() {
+            if (!extractedUsername) {
+                sendResultElement.className = 'error';
+                sendResultElement.textContent = '错误：没有可用的用户名';
+                return;
+            }
+            
+            sendResultElement.textContent = '正在发送...';
+            
+            try {
+                // 使用连接器发送用户名
+                const result = await window.AIPlatformConnector.sendUsername(extractedUsername);
+                
+                // 同时保存到本地
+                window.AIPlatformConnector.saveUserLocally(extractedUsername);
+                
+                sendResultElement.className = 'success';
+                sendResultElement.textContent = '成功：用户名已发送到AI绘画平台！';
+            } catch (error) {
+                sendResultElement.className = 'error';
+                sendResultElement.textContent = `错误：${error.message}`;
+            }
+        });
+        
+        // 自动发送到AI平台
+        document.getElementById('autoSendToAIPlatform').addEventListener('click', function() {
+            // 保存自动发送设置
+            localStorage.setItem('ai_platform_auto_send', 'true');
+            sendResultElement.className = 'success';
+            sendResultElement.textContent = '已设置为自动发送模式，下次加载页面时将自动发送用户名';
+        });
+        
+        // 页面加载完成后自动获取用户信息
+        window.addEventListener('load', async function() {
+            // 自动获取用户信息
+            await autoGetUserInfo();
+            
+            // 如果设置了自动发送并且找到了用户名，则自动发送
+            const autoSend = localStorage.getItem('ai_platform_auto_send') === 'true';
+            if (autoSend && extractedUsername) {
+                try {
+                    sendResultElement.textContent = '正在自动发送...';
+                    const result = await window.AIPlatformConnector.sendUsername(extractedUsername);
+                    sendResultElement.className = 'success';
+                    sendResultElement.textContent = '成功：用户名已自动发送到AI绘画平台！';
+                } catch (error) {
+                    sendResultElement.className = 'error';
+                    sendResultElement.textContent = `自动发送失败：${error.message}`;
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

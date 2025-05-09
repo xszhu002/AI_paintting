@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全校AI绘画画廊 - 瀑布流展示</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/gallery.css">
+    <link rel="stylesheet" href="css/gallery-horizontal.css">
+    <link rel="stylesheet" href="css/gallery-grid.css">
+    <!-- 引入字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入Masonry布局库 -->
+    <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 标题区域 -->
+        <div class="gallery-header">
+            <h1 class="title">全校AI绘画画廊</h1>
+            <p class="subtitle">这里展示了同学们的优秀AI绘画作品</p>
+            <div class="gallery-actions">
+                <a href="index.html" class="btn btn-primary">我要创作</a>
+            </div>
+        </div>
+
+        <!-- 画廊控制区域 -->
+        <div class="gallery-controls">
+            <div class="filter-group">
+                <button class="filter-btn active" data-filter="all">全部作品</button>
+                <button class="filter-btn" data-filter="recent">最新作品</button>
+                <button class="filter-btn" data-filter="popular">热门作品</button>
+            </div>
+            <div class="view-group">
+                <button class="view-btn active" data-view="masonry">瀑布流</button>
+                <button class="view-btn" data-view="grid">网格</button>
+            </div>
+        </div>
+
+        <!-- 画廊容器 -->
+        <div class="gallery-container">
+            <!-- 空画廊提示 -->
+            <div id="emptyGallery" class="empty-gallery hidden">
+                <img src="images/empty-gallery.svg" alt="空画廊">
+                <p>学校画廊中还没有作品，快来成为第一个提交作品的同学吧！</p>
+            </div>
+            
+            <!-- 画廊网格容器 -->
+            <div class="gallery-grid masonry-view" id="galleryGrid">
+                <!-- 画廊项将动态加载 -->
+            </div>
+            
+            <!-- 底部留白区域，用于滚动监测 -->
+            <div style="height: 50px; width: 100%;"></div>
+        </div>
+
+        <!-- 图片预览模态框 -->
+        <div id="imageModal" class="modal">
+            <div class="modal-content large-modal">
+                <span class="close-button">&times;</span>
+                <div class="modal-flex-container">
+                    <div class="modal-image-container">
+                        <img id="modalImage" src="" alt="预览图片">
+                    </div>
+                    <div class="modal-side-panel">
+                        <h3>作品信息</h3>
+                        <div id="modalChinesePrompt" class="modal-chinese-prompt"></div>
+                        <div class="modal-prompt-label">英文提示词:</div>
+                        <p id="modalPrompt" class="modal-prompt"></p>
+                        <p id="modalDate"></p>
+                        <div class="info-section mb-3">
+                            <h6>作者:</h6>
+                            <p id="modalAuthor" class="text-muted"></p>
+                        </div>
+                        <div class="info-section mb-3">
+                            <h6>IP地址:</h6>
+                            <p id="modalIP" class="text-muted" style="font-family: monospace;"></p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary" id="copyChinesePrompt">复制中文提示词</button>
+                        <div class="modal-actions">
+                            <button class="btn btn-primary" id="downloadBtn">下载图片</button>
+                            <button class="btn btn-success" id="likeBtn">点赞</button>
+                            <button class="btn btn-info" id="submitToGalleryBtn">提交到学校画廊</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入客户端API脚本 -->
+    <script src="js/client.js"></script>
+    <script src="js/gallery.js"></script>
+    
+    <!-- 脚本错误处理 -->
+    <script>
+        // 全局错误处理
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('全局JS错误:', message, source, lineno, colno, error);
+            return true;
+        };
+    </script>
+</body>
+</html> 
