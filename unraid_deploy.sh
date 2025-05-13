@@ -27,11 +27,14 @@ docker run -d \
   -e DEBUG=False \
   -e JWT_SECRET=your_secure_jwt_secret \
   --restart unless-stopped \
+  --network host \
+  --privileged \
+  --cap-add SYS_ADMIN \
+  --security-opt seccomp=unconfined \
   --ulimit nproc=65535 \
   --ulimit nofile=65535 \
-  --memory=2g \
-  --memory-swap=4g \
-  --network=bridge \
+  --memory=4g \
+  --memory-swap=8g \
   ghcr.io/xszhu002/ai_paintting:latest
 
 # 打印容器状态

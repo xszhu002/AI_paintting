@@ -2161,7 +2161,66 @@ def api_record_generation():
 
 # 启动队列处理线程
 queue_thread = threading.Thread(target=process_queue, daemon=True)
-queue_thread.start()
+try:
+    queue_thread.start()
+    print("队列处理线程已启动")
+except RuntimeError as e:
+    print(f"启动队列处理线程时出错: {e}")
+    print("将采用无线程模式运行，部分功能可能受限")
+    # 不用线程，直接在主进程中处理请求
+    @app.before_request
+    def process_requests_in_main_thread():
+        if not request_queue.empty():
+            try:
+                request_id = list(request_queue.queue)[0]
+                request_data = pending_requests.get(request_id)
+                if request_data and request_data.get('status') == 'queued':
+                    # 处理一个请求
+                    process_one_request(request_id)
+            except Exception as e:
+                print(f"主线程处理请求时出错: {e}")
+
+def process_one_request(request_id):
+    """在主线程中处理单个请求"""
+    try:
+        request_data = pending_requests.get(request_id)
+        if not request_data:
+            return
+        
+        request_data['status'] = 'processing'
+        print(f"正在处理请求 {request_id}")
+        
+        # 处理请求
+        try:
+            start_time = time.time()
+            result = generate_image(request_data['prompt'], request_data.get('width', 1024), 
+                                   request_data.get('height', 1024), request_data.get('style', ''))
+            processing_time = time.time() - start_time
+            
+            # 请求成功，更新请求状态
+            pending_requests[request_id]['status'] = 'completed'
+            pending_requests[request_id]['result'] = result
+            pending_requests[request_id]['processing_time'] = processing_time
+            queue_stats['total_processed'] += 1
+            queue_stats['processing_time'] += processing_time
+            
+            # 从队列中移除
+            for i in range(request_queue.qsize()):
+                item = request_queue.get()
+                if item != request_id:
+                    request_queue.put(item)
+            
+            print(f"请求 {request_id} 处理完成")
+            
+        except Exception as e:
+            # 请求失败，更新请求状态
+            pending_requests[request_id]['status'] = 'error'
+            pending_requests[request_id]['error'] = str(e)
+            queue_stats['total_errors'] += 1
+            
+            print(f"处理请求 {request_id} 时出错: {e}")
+    except Exception as e:
+        print(f"处理请求函数出错: {e}")
 
 @app.route('/api/admin/user_stats', methods=['GET'])
 def api_admin_user_stats():
