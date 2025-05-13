@@ -2,6 +2,29 @@
  * 管理员作品审核界面的JavaScript
  */
 
+// 确保API_BASE_URL变量存在，防止admin_common.js未加载
+if (typeof API_BASE_URL === 'undefined') {
+    // 定义备用的API基础URL
+    const API_BASE_URL = (() => {
+        // 尝试从localStorage获取配置的API地址
+        const savedApiUrl = localStorage.getItem('api_base_url');
+        if (savedApiUrl) return savedApiUrl;
+        
+        // 动态获取当前域名，自动配置API地址
+        const currentHost = window.location.hostname;
+        
+        // 如果是在本地调试（localhost或127.0.0.1）
+        if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+            return 'http://172.16.201.200:8080'; // 本地开发环境使用硬编码地址
+        }
+        
+        // 生产环境：使用当前域名，API端口为8080
+        return `http://${currentHost}:8080`;
+    })();
+    
+    console.log('使用admin_review.js中定义的备用API地址:', API_BASE_URL);
+}
+
 // 全局变量
 let currentPage = 1;
 const perPage = 12;
