@@ -20,9 +20,9 @@ docker run -d \
   -p 8000:8000 \
   -p 8080:8080 \
   -v /mnt/user/appdata/ai-painting/data:/data \
-  -e MONGO_HOST=172.16.201.81 \
+  -e MONGO_HOST=172.16.201.200 \
   -e MONGO_PORT=27017 \
-  -e MONGO_URI=mongodb://172.16.201.81:27017/ \
+  -e MONGO_URI=mongodb://172.16.201.200:27017/ \
   -e PORT=8080 \
   -e DEBUG=False \
   -e JWT_SECRET=your_secure_jwt_secret \
@@ -47,7 +47,7 @@ echo "部署完成！"
 echo "Web界面: http://172.16.201.81:8000"
 echo "API服务: http://172.16.201.81:8080"
 echo ""
-echo "请确保MongoDB已在Unraid上运行，并且可以从Docker容器访问。"
+echo "请确保MongoDB已在新地址(172.16.201.200:27017)上运行，并且可以从Docker容器访问。"
 echo "如需查看日志，请运行: docker logs ai-painting"
 
 # 添加测试MongoDB连接的命令
@@ -56,7 +56,7 @@ echo "测试MongoDB连接:"
 docker exec ai-painting python -c "
 from pymongo import MongoClient
 try:
-    client = MongoClient('mongodb://172.16.201.81:27017/', serverSelectionTimeoutMS=5000)
+    client = MongoClient('mongodb://172.16.201.200:27017/', serverSelectionTimeoutMS=5000)
     info = client.server_info()
     print('MongoDB连接成功!')
     print(f'MongoDB版本: {info.get(\"version\")}')
