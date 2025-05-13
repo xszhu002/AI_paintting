@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Empty Gallery</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect stroke="#E0E0E0" stroke-width="4" x="40" y="40" width="120" height="120" rx="8"/>
+        <path d="M80,100 L120,100" stroke="#E0E0E0" stroke-width="4" stroke-linecap="round"/>
+        <path d="M100,80 L100,120" stroke="#E0E0E0" stroke-width="4" stroke-linecap="round"/>
+    </g>
+</svg> 

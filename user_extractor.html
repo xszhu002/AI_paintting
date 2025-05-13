@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生信息提取器</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f9fd;
+        }
+        .info-box {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #4169e1;
+        }
+        .status.success {
+            background-color: #d4edda;
+            border-left-color: #28a745;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4c6ef5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #364fc7;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+        button.success {
+            background-color: #28a745;
+        }
+        button.success:hover {
+            background-color: #218838;
+        }
+        .log-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .log-info {
+            color: #0c5460;
+        }
+        .log-success {
+            color: #155724;
+        }
+        .log-warning {
+            color: #856404;
+        }
+        .log-error {
+            color: #721c24;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-box">
+        <h1>学生信息提取器</h1>
+        <p>此页面用于获取当前登录用户的信息并提供给AI绘画平台使用。</p>
+        
+        <div id="statusMessage" class="status">
+            正在初始化...
+        </div>
+        
+        <div class="buttons">
+            <button id="autoDetectBtn">自动检测学生信息</button>
+            <button id="manualCheckBtn" class="secondary">手动检查页面元素</button>
+            <button id="clearStorageBtn" class="secondary">清除存储的信息</button>
+        </div>
+        
+        <div id="studentInfoDisplay" style="margin-top: 20px; display: none;">
+            <h2>检测到的学生信息</h2>
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; border-left: 4px solid #0d6efd;">
+                <p><strong>学生姓名:</strong> <span id="displayName">-</span></p>
+                <p><strong>学生学号:</strong> <span id="displayId">-</span></p>
+                <p><strong>信息来源:</strong> <span id="displaySource">-</span></p>
+            </div>
+            <div class="buttons" style="margin-top: 10px;">
+                <button id="sendToParentBtn" class="success">使用这些信息</button>
+            </div>
+        </div>
+        
+        <h2>日志信息</h2>
+        <div id="logContainer" class="log-container"></div>
+    </div>
+    
+    <!-- 引入学生信息连接器脚本 -->
+    <script src="../ai_platform_connector.js"></script>
+    
+    <script>
+        // 日志功能
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+        
+        // 更新状态显示
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        // 显示学生信息
+        function displayStudentInfo(info) {
+            if (info && info.studentName && info.studentId) {
+                document.getElementById('displayName').textContent = info.studentName;
+                document.getElementById('displayId').textContent = info.studentId;
+                document.getElementById('displaySource').textContent = info.source || '未知';
+                document.getElementById('studentInfoDisplay').style.display = 'block';
+                updateStatus(`成功获取学生信息: ${info.studentName} (${info.studentId})`, 'success');
+            } else {
+                document.getElementById('studentInfoDisplay').style.display = 'none';
+                if (info && info.error) {
+                    updateStatus(`获取信息失败: ${info.error}`, 'error');
+                } else {
+                    updateStatus('未找到学生信息', 'warning');
+                }
+            }
+        }
+        
+        // 自动检测学生信息
+        async function autoDetectStudentInfo() {
+            try {
+                updateStatus('正在自动检测学生信息...', 'info');
+                log('开始自动检测学生信息');
+                
+                const info = await window.StudentInfoConnector.getStudentInfo();
+                
+                if (info.studentName && info.studentId) {
+                    log(`成功获取学生信息: ${info.studentName} (${info.studentId})`, 'success');
+                    log(`信息来源: ${info.source || '未知'}`);
+                    displayStudentInfo(info);
+                    
+                    // 自动发送到父窗口
+                    sendToParent(info);
+                    return true;
+                } else {
+                    log(`自动检测失败: ${info.error || '未找到学生信息'}`, 'warning');
+                    displayStudentInfo(info);
+                    return false;
+                }
+            } catch (error) {
+                log(`自动检测出错: ${error.message}`, 'error');
+                updateStatus(`检测出错: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 手动检查页面元素
+        async function manualCheckPageElements() {
+            try {
+                updateStatus('正在手动检查页面元素...', 'info');
+                log('开始手动检查页面元素');
+                
+                // 尝试直接获取
+                const info = await window.StudentInfoConnector.fetchStudentInfoDirectly();
+                
+                if (info.studentName && info.studentId) {
+                    log(`手动检查成功: ${info.studentName} (${info.studentId})`, 'success');
+                    displayStudentInfo(info);
+                    return true;
+                } else {
+                    // 如果直接获取失败，尝试通过iframe获取
+                    log('直接获取失败，尝试通过iframe获取', 'warning');
+                    
+                    try {
+                        const iframeInfo = await window.StudentInfoConnector.fetchStudentInfoFromPage();
+                        log(`iframe获取成功: ${iframeInfo.studentName} (${iframeInfo.studentId})`, 'success');
+                        displayStudentInfo(iframeInfo);
+                        return true;
+                    } catch (iframeError) {
+                        log(`iframe获取失败: ${iframeError.message}`, 'error');
+                        updateStatus(`检查失败: ${iframeError.message}`, 'error');
+                        return false;
+                    }
+                }
+            } catch (error) {
+                log(`手动检查出错: ${error.message}`, 'error');
+                updateStatus(`检查出错: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 发送信息到父窗口
+        function sendToParent(info) {
+            if (info && info.studentName && info.studentId) {
+                log(`正在发送信息到父窗口: ${info.studentName} (${info.studentId})`);
+                
+                try {
+                    window.parent.postMessage({
+                        type: 'STUDENT_INFO',
+                        studentName: info.studentName,
+                        studentId: info.studentId
+                    }, '*');
+                    
+                    log('信息已发送到父窗口', 'success');
+                    updateStatus('信息已成功发送到AI绘画平台！', 'success');
+                } catch (error) {
+                    log(`发送信息失败: ${error.message}`, 'error');
+                    updateStatus(`发送信息失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('没有可用的学生信息可发送', 'warning');
+                updateStatus('没有可用的学生信息可发送', 'warning');
+            }
+        }
+        
+        // 清除存储的信息
+        function clearStoredInfo() {
+            log('正在清除存储的学生信息');
+            window.StudentInfoConnector.clearStudentInfo();
+            log('存储的学生信息已清除', 'success');
+            updateStatus('存储的学生信息已清除', 'success');
+            document.getElementById('studentInfoDisplay').style.display = 'none';
+        }
+        
+        // 初始化页面
+        async function initPage() {
+            updateStatus('正在初始化页面...', 'info');
+            log('页面初始化开始');
+            
+            // 检查 StudentInfoConnector 是否可用
+            if (!window.StudentInfoConnector) {
+                log('StudentInfoConnector不可用，请确保已正确加载ai_platform_connector.js', 'error');
+                updateStatus('组件加载失败，请刷新页面重试', 'error');
+                return;
+            }
+            
+            log('StudentInfoConnector已加载');
+            
+            // 绑定按钮事件
+            document.getElementById('autoDetectBtn').addEventListener('click', autoDetectStudentInfo);
+            document.getElementById('manualCheckBtn').addEventListener('click', manualCheckPageElements);
+            document.getElementById('clearStorageBtn').addEventListener('click', clearStoredInfo);
+            document.getElementById('sendToParentBtn').addEventListener('click', () => {
+                const info = window.StudentInfoConnector.getLocalStudentInfo();
+                sendToParent(info);
+            });
+            
+            // 尝试自动检测
+            const success = await autoDetectStudentInfo();
+            
+            // 如果自动检测失败，提示用户手动检查
+            if (!success) {
+                updateStatus('自动检测未找到学生信息，请尝试手动检查', 'warning');
+            }
+            
+            log('页面初始化完成');
+        }
+        
+        // 当页面加载完成时初始化
+        window.addEventListener('DOMContentLoaded', initPage);
+        
+        // 响应来自父窗口的消息
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'GET_STUDENT_INFO') {
+                log(`收到父窗口请求学生信息: ${JSON.stringify(event.data)}`);
+                
+                const info = window.StudentInfoConnector.getLocalStudentInfo();
+                if (info) {
+                    sendToParent(info);
+                } else {
+                    // 如果没有缓存的信息，尝试自动检测
+                    autoDetectStudentInfo();
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

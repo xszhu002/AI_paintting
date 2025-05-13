@@ -1,0 +1,1 @@
+{"metadata":{"backup_id":"testbackup123","name":"测试备份","timestamp":"2023-05-05T12:00:00","type":"full","collections":["users","school_gallery"],"include_images":true,"created_by":"admin"},"data":{"sample":"这是一个测试备份文件"}}

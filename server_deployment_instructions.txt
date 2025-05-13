@@ -1,0 +1,53 @@
+# 学生信息提取器部署说明
+
+## 部署步骤
+
+1. 将 `user_extractor.html` 文件上传到学校服务器 `http://172.16.201.191/ai/` 目录下
+
+2. 确保文件权限正确，可以被Web服务器访问
+
+3. 添加跨域访问支持：在Web服务器配置中添加适当的CORS（跨域资源共享）设置
+
+## IIS服务器配置示例
+
+如果学校使用IIS服务器，可以在web.config文件中添加以下内容：
+
+```xml
+<configuration>
+  <system.webServer>
+    <httpProtocol>
+      <customHeaders>
+        <add name="Access-Control-Allow-Origin" value="*" />
+        <add name="Access-Control-Allow-Methods" value="GET,POST,OPTIONS" />
+        <add name="Access-Control-Allow-Headers" value="Content-Type" />
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+</configuration>
+```
+
+## Apache服务器配置示例
+
+如果学校使用Apache服务器，可以在.htaccess文件中添加以下内容：
+
+```
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET,POST,OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type"
+```
+
+## 用户提取器设计说明
+
+user_extractor.html文件被设计为:
+
+1. 在iframe中加载
+2. 读取当前登录用户的信息
+3. 通过postMessage将用户信息发送回父窗口
+
+这种方式可以在不影响原有系统的情况下，安全地获取用户信息。
+
+## 注意事项
+
+1. 如果学校网站有特殊的认证或会话管理机制，可能需要修改user_extractor.html文件以适应
+2. 确保用户信息提取的安全性，避免敏感信息的泄露
+3. 定期测试此功能，确保它与学校网站的变化保持同步 

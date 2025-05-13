@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI绘画乐园 - 用户管理</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="http://172.16.201.200:8000/css/admin.css">
+    <style>
+        .btn-toolbar {
+            margin-bottom: 15px;
+        }
+        
+        .table td, .table th {
+            vertical-align: middle;
+        }
+        
+        .badge {
+            font-size: 90%;
+        }
+        
+        .count-badge {
+            font-size: 85%;
+            padding: 4px 8px;
+            margin-right: 5px;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .suspension-info {
+            font-size: 80%;
+            display: block;
+            color: #6c757d;
+        }
+        
+        .btn-action {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            margin-right: 5px;
+        }
+        
+        .import-textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        
+        .import-sample {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        
+        .file-upload-wrapper {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .csv-info {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+
+        .filter-link {
+            color: inherit;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-link:hover {
+            color: #4e73df;
+            text-decoration: none;
+            transform: scale(1.05);
+        }
+        
+        .filter-link.active {
+            color: #4e73df;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边导航 -->
+            <nav class="col-md-2 d-none d-md-block bg-dark sidebar">
+                <div class="sidebar-sticky pt-3">
+                    <div class="navbar-brand text-center py-3">
+                        <h4 class="text-white">AI绘画乐园管理系统</h4>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_dashboard.html">
+                                <i class="fas fa-chart-line"></i> 控制面板
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="admin_users.html">
+                                <i class="fas fa-users"></i> 用户管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_review.html">
+                                <i class="fas fa-images"></i> 作品审核
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_reports.html">
+                                <i class="fas fa-chart-bar"></i> 统计报表
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin_backup.html">
+                                <i class="fas fa-database"></i> 备份还原
+                            </a>
+                        </li>
+                        <li class="nav-item mt-5">
+                            <a class="nav-link" href="#" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i> 退出登录
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-10 ml-sm-auto px-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+                    <h1>用户管理</h1>
+                    <div class="btn-toolbar">
+                        <button class="btn btn-success mr-2" id="addUserBtn">
+                            <i class="fas fa-user-plus"></i> 添加用户
+                        </button>
+                        <div class="dropdown mr-2">
+                            <button class="btn btn-primary dropdown-toggle" id="importDropdown" data-toggle="dropdown">
+                                <i class="fas fa-file-import"></i> 批量导入
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item" href="#" id="importTextBtn">文本导入</a>
+                                <a class="dropdown-item" href="#" id="importCsvBtn">CSV导入</a>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="exportUserBtn">
+                            <i class="fas fa-file-export"></i> 导出用户
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            总用户数</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <a href="#" class="filter-link" data-filter="all" id="totalUsers">0</a>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            激活用户</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <a href="#" class="filter-link" data-filter="active" id="activeUsers">0</a>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            暂停用户</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <a href="#" class="filter-link" data-filter="suspended" id="suspendedUsers">0</a>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-user-clock fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                            禁用用户</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <a href="#" class="filter-link" data-filter="inactive" id="inactiveUsers">0</a>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-user-slash fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索栏 -->
+                <div class="card mb-4 shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="searchInput" placeholder="搜索学号/姓名...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" id="searchBtn">
+                                            <i class="fas fa-search"></i> 搜索
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-control" id="statusFilter">
+                                    <option value="all">所有状态</option>
+                                    <option value="active">激活</option>
+                                    <option value="suspended">暂停</option>
+                                    <option value="inactive">禁用</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 批量操作栏 -->
+                <div class="card mb-4 shadow" id="batchActionsCard" style="display: none;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge badge-pill badge-primary" id="selectedCount">已选择 0 项</span>
+                                <button class="btn btn-sm btn-outline-secondary ml-2" id="clearSelectionBtn">清除选择</button>
+                            </div>
+                            <div>
+                                <button class="btn btn-warning mr-2" id="batchSuspendBtn">批量暂停</button>
+                                <button class="btn btn-success mr-2" id="batchReactivateBtn">批量解除暂停</button>
+                                <button class="btn btn-danger" id="batchDisableBtn">批量禁用</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户表格 -->
+                <div class="card shadow mb-4">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAllUsers">
+                                        </th>
+                                        <th>学号</th>
+                                        <th>姓名</th>
+                                        <th>状态</th>
+                                        <th>临时违禁</th>
+                                        <th>总违禁次数</th>
+                                        <th>点赞数</th>
+                                        <th>最后登录</th>
+                                        <th width="150">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userTableBody">
+                                    <!-- 用户数据会通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="noUsersMessage" class="text-center py-4" style="display: none;">
+                            <p class="text-muted">没有找到用户数据</p>
+                        </div>
+                        <div id="loadingMessage" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载用户数据...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分页控件 -->
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- 分页将通过JavaScript动态生成 -->
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+
+    <!-- 添加/编辑用户模态框 -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">添加用户</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userId">
+                        <div class="form-group">
+                            <label for="studentId">学号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="studentId" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="username">姓名</label>
+                            <input type="text" class="form-control" id="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="status">状态</label>
+                            <select class="form-control" id="status">
+                                <option value="active">激活</option>
+                                <option value="inactive">禁用</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="banReasonGroup" style="display: none;">
+                            <label for="banReason">禁用原因</label>
+                            <input type="text" class="form-control" id="banReason">
+                        </div>
+                        <div class="form-group">
+                            <label for="isSuspended">是否暂停</label>
+                            <select class="form-control" id="isSuspended">
+                                <option value="否">否</option>
+                                <option value="是">是</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sensitiveWordCount">总违禁次数</label>
+                            <input type="number" class="form-control" id="sensitiveWordCount" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="tempSensitiveCount">临时违禁次数</label>
+                            <input type="number" class="form-control" id="tempSensitiveCount" min="0" max="5" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="likesCount">点赞数</label>
+                            <input type="number" class="form-control" id="likesCount" min="0" value="0">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveUserBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文本导入模态框 -->
+    <div class="modal fade" id="importTextModal" tabindex="-1" aria-labelledby="importTextModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importTextModalLabel">批量导入用户 - 文本格式</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6>格式说明</h6>
+                        <p class="mb-1">每行一个用户，学号和姓名用逗号、空格或制表符分隔</p>
+                        <p class="mb-0">例如: <code>2023001 张三</code> 或 <code>2023001,张三</code></p>
+                    </div>
+                    <div class="import-sample">
+                        2023001 张三<br>
+                        2023002 李四<br>
+                        2023003,王五<br>
+                        2023004 赵六
+                    </div>
+                    <div class="form-group">
+                        <label for="importTextData">请输入用户数据:</label>
+                        <textarea class="form-control import-textarea" id="importTextData" rows="10" placeholder="请粘贴用户数据，每行一个用户..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmTextImportBtn">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV导入模态框 -->
+    <div class="modal fade" id="importCsvModal" tabindex="-1" aria-labelledby="importCsvModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importCsvModalLabel">批量导入用户 - CSV格式</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6>CSV文件格式</h6>
+                        <p class="mb-0">请上传包含学号和姓名列的CSV文件，第一行应为列标题</p>
+                    </div>
+                    <div class="file-upload-wrapper">
+                        <input type="file" class="form-control-file" id="csvFileInput" accept=".csv">
+                    </div>
+                    <div class="csv-info">
+                        <p><strong>列标题说明:</strong></p>
+                        <p>
+                            必选列: student_id (学号)<br>
+                            可选列: username (姓名), status (状态), sensitive_word_count (总违禁次数), 
+                            temp_sensitive_count (临时违禁次数), is_suspended (是否暂停), likes_count (点赞数)
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmCsvImportBtn">导入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量操作确认模态框 -->
+    <div class="modal fade" id="batchActionModal" tabindex="-1" aria-labelledby="batchActionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="batchActionModalLabel">批量操作确认</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="batchActionMessage">您确定要执行此操作吗？此操作将影响选中的所有用户。</p>
+                    <div class="form-group" id="batchBanReasonGroup" style="display: none;">
+                        <label for="batchBanReason">禁用原因</label>
+                        <input type="text" class="form-control" id="batchBanReason" placeholder="请输入禁用原因">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmBatchActionBtn">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script src="js/admin_users.js"></script>
+</body>
+</html> 

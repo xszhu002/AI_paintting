@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>敏感词测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            min-height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+        .sensitive-words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .word-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>敏感词测试页面</h1>
+        
+        <div class="section">
+            <h2>敏感词测试</h2>
+            <p>输入文本进行敏感词检测：</p>
+            <textarea id="testText" placeholder="请输入要检测的文本..."></textarea>
+            <button id="testBtn">检测敏感词</button>
+            <div id="testResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>自定义敏感词列表</h2>
+            <button id="loadBtn">加载自定义敏感词</button>
+            <div id="customWords" class="result">点击按钮加载自定义敏感词...</div>
+        </div>
+        
+        <div class="section">
+            <h2>API测试</h2>
+            <button id="testApiBtn">测试敏感词API</button>
+            <div id="apiResult" class="result"></div>
+        </div>
+    </div>
+    
+    <!-- 引入敏感词JS文件 -->
+    <script src="js/sensitive-words.js"></script>
+    
+    <!-- 添加模拟ArtServerClient类 -->
+    <script>
+        // 模拟ArtServerClient类
+        class ArtServerClient {
+            constructor() {
+                this.serverUrl = 'http://172.16.201.200:8080';
+            }
+        }
+        
+        // 设置全局实例
+        window.artClient = new ArtServerClient();
+        
+        // 模拟友好警告函数
+        window.showFriendlyAlert = function(message) {
+            alert(message);
+        };
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 敏感词检测按钮
+            document.getElementById('testBtn').addEventListener('click', function() {
+                const text = document.getElementById('testText').value.trim();
+                if (!text) {
+                    alert('请输入要检测的文本');
+                    return;
+                }
+                
+                const result = window.sensitiveWordsFilter.checkLocal(text);
+                
+                // 显示结果
+                const resultDiv = document.getElementById('testResult');
+                let html = `<p>安全: <strong>${result.safe ? '是' : '否'}</strong></p>`;
+                
+                if (!result.safe) {
+                    html += '<p>检测到的敏感词:</p><div class="sensitive-words-list">';
+                    result.words.forEach(word => {
+                        html += `<span class="word-tag">${word}</span>`;
+                    });
+                    html += '</div>';
+                    
+                    html += '<p>所属类别:</p><ul>';
+                    result.categories.forEach(category => {
+                        html += `<li>${category}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                resultDiv.innerHTML = html;
+            });
+            
+            // 加载自定义敏感词按钮
+            document.getElementById('loadBtn').addEventListener('click', async function() {
+                const customWordsDiv = document.getElementById('customWords');
+                customWordsDiv.innerHTML = '正在加载自定义敏感词...';
+                
+                try {
+                    await window.sensitiveWordsFilter.loadCustomWords();
+                    const customWords = window.sensitiveWordsFilter.getGroups();
+                    
+                    // 显示自定义敏感词
+                    let html = '<ul>';
+                    for (const category in customWords) {
+                        // 只显示自定义敏感词，跳过内置敏感词
+                        if (['obscene', 'violence', 'badIdeas', 'profanity', 'discrimination', 'other'].includes(category)) {
+                            continue;
+                        }
+                        
+                        const words = customWords[category];
+                        html += `<li><strong>${category}</strong>: <div class="sensitive-words-list">`;
+                        
+                        words.forEach(word => {
+                            html += `<span class="word-tag">${word}</span>`;
+                        });
+                        
+                        html += '</div></li>';
+                    }
+                    html += '</ul>';
+                    
+                    if (html === '<ul></ul>') {
+                        html = '<p>没有找到自定义敏感词</p>';
+                    }
+                    
+                    customWordsDiv.innerHTML = html;
+                } catch (error) {
+                    customWordsDiv.innerHTML = `<p>加载失败: ${error.message}</p>`;
+                }
+            });
+            
+            // 测试API按钮
+            document.getElementById('testApiBtn').addEventListener('click', async function() {
+                const apiResultDiv = document.getElementById('apiResult');
+                apiResultDiv.innerHTML = '正在测试API...';
+                
+                try {
+                    // 设置一个临时的学生ID
+                    localStorage.setItem('studentId', 'test123');
+                    
+                    // 测试文本（包含一些敏感词）
+                    const testText = '这是一个测试，包含一些敏感词如黄色和暴力';
+                    
+                    // 测试API
+                    const result = await window.sensitiveWordsFilter.check(testText, true);
+                    
+                    // 显示结果
+                    let html = `<p>API测试结果:</p>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    
+                    apiResultDiv.innerHTML = html;
+                } catch (error) {
+                    apiResultDiv.innerHTML = `<p>API测试失败: ${error.message}</p>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

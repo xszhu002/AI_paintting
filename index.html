@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小朋友的AI绘画乐园</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/queue.css">
+    <!-- 引入字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 添加学生信息显示样式 -->
+    <style>
+        .student-info-banner {
+            background-color: #f8f9fa;
+            color: #333;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            border-bottom: 1px solid #ddd;
+            position: relative;
+            z-index: 100;
+        }
+        .dark-theme .student-info-banner {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border-bottom: 1px solid #34495e;
+        }
+    </style>
+    
+    <!-- 百度翻译API支持 -->
+    <script>
+        // 百度翻译API辅助函数
+        window.baiduTranslateHelpers = {
+            // 备用字典翻译，当API失败时使用
+            dictionary: {
+                // 对象/主体
+                "猫": "cat",
+                "猫咪": "kitten",
+                "小猫": "kitten",
+                "狗": "dog",
+                "小狗": "puppy",
+                "女孩": "girl",
+                "小女孩": "little girl",
+                "男孩": "boy",
+                "小男孩": "little boy",
+                "人": "person",
+                "女人": "woman",
+                "男人": "man",
+                "老人": "elderly person",
+                "鱼": "fish",
+                "小鱼": "small fish",
+                "鸟": "bird",
+                "小鸟": "small bird",
+                "树": "tree",
+                "花": "flower",
+                "草": "grass",
+                "山": "mountain",
+                "河": "river",
+                "湖": "lake",
+                "海": "sea",
+                "天空": "sky",
+                "云": "cloud",
+                "星星": "star",
+                "月亮": "moon",
+                "太阳": "sun",
+                "房子": "house",
+                "城堡": "castle",
+                "森林": "forest",
+                "城市": "city",
+                "村庄": "village",
+                "宇宙飞船": "spaceship",
+                "火箭": "rocket",
+                "汽车": "car",
+                "机器人": "robot"
+            }
+        };
+    </script>
+    
+    <!-- 引入translate.js翻译库 -->
+    <script src="https://res.zvo.cn/translate/translate.js"></script>
+</head>
+<body>
+    <!-- 添加学生信息显示横幅 -->
+    <div class="student-info-banner" id="studentInfoBanner">
+        正在获取学生信息...
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 机器人装饰 -->
+        <div class="leaves"></div>
+        
+        <!-- 主卡片 -->
+        <div class="card">
+            <!-- 标题 -->
+            <h1 class="title">小朋友的AI绘画乐园</h1>
+            
+            <!-- 表单区域 -->
+            <div class="form-container">
+                <!-- 描述词输入 -->
+                <div class="form-group">
+                    <label for="prompt">画什么呢:</label>
+                    <textarea id="prompt" placeholder="例如：一只可爱的小狗在草地上玩耍，旁边有蝴蝶在飞舞"></textarea>
+                </div>
+                <div class="translation-wrapper">
+                    <button id="translateBtn" class="btn btn-sm btn-info">翻译</button>
+                    <div id="translationDisplay" class="translation-display"></div>
+                </div>
+                
+                <!-- 小帮手提示词区域 - 移动到翻译区域下方，画作比例上方 -->
+                <div class="prompt-helper">
+                    <h3>小帮手提示词 <span class="helper-subtitle">👉 点击下面的提示词，自动填写到"画什么"框里</span></h3>
+                    <div class="prompt-tags-container">
+                        <div class="prompt-tag" data-prompt="一只可爱的猫咪在玩毛线球">🐱 猫咪玩毛线球</div>
+                        <div class="prompt-tag" data-prompt="一条彩色的小鱼在海底游泳，周围有珊瑚">🐟 彩色小鱼游泳</div>
+                        <div class="prompt-tag" data-prompt="一个卡通风格的宇航员在太空中漂浮">👨‍🚀 宇航员太空漂浮</div>
+                        <div class="prompt-tag" data-prompt="一个魔法城堡，城堡周围有彩虹和小精灵">🏰 魔法城堡和精灵</div>
+                        <div class="prompt-tag" data-prompt="一只恐龙在森林里吃水果">🦕 恐龙吃水果</div>
+                        <div class="prompt-tag" data-prompt="一个小女孩在雪地里堆雪人">⛄ 小女孩堆雪人</div>
+                        <div class="prompt-tag" data-prompt="一艘宇宙飞船在星系中航行">🚀 宇宙飞船航行</div>
+                        <div class="prompt-tag" data-prompt="一个热气球飞越山脉，山下有小村庄">🎈 热气球飞行</div>
+                        <div class="prompt-tag" data-prompt="一个机器人在玩足球">🤖 机器人踢足球</div>
+                        <div class="prompt-tag" data-prompt="一座水下城市，有鱼儿和美人鱼">🧜‍♀️ 水下城市</div>
+                        <div class="prompt-tag" data-prompt="一个童话森林，有蘑菇房子和小动物">🍄 童话森林</div>
+                        <div class="prompt-tag" data-prompt="一只小狗在海滩上玩沙子">🐕 小狗玩沙子</div>
+                        <div class="prompt-tag" data-prompt="一条七彩的龙在云中飞翔">🐉 七彩龙飞翔</div>
+                        <div class="prompt-tag" data-prompt="一个超级英雄在城市中飞行">🦸 超级英雄飞行</div>
+                        <div class="prompt-tag" data-prompt="一个巨大的糖果城堡，有巧克力河流">🍭 糖果城堡</div>
+                        <div class="prompt-tag" data-prompt="一群企鹅在冰山上滑滑梯">🐧 企鹅滑冰山</div>
+                    </div>
+                </div>
+                
+                <!-- 比例选择器 -->
+                <div class="form-group">
+                    <label>画作比例:</label>
+                    <div class="aspect-ratio-selector">
+                        <input type="radio" id="ratio1_1" name="aspectRatio" value="1:1" checked>
+                        <label for="ratio1_1" class="ratio-option" title="1:1 方形">
+                            <div class="ratio-icon ratio-1-1"></div>
+                            <span>1:1</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio1_2" name="aspectRatio" value="1:2">
+                        <label for="ratio1_2" class="ratio-option" title="1:2 竖长方形">
+                            <div class="ratio-icon ratio-1-2"></div>
+                            <span>1:2</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio2_1" name="aspectRatio" value="2:1">
+                        <label for="ratio2_1" class="ratio-option" title="2:1 横长方形">
+                            <div class="ratio-icon ratio-2-1"></div>
+                            <span>2:1</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio2_3" name="aspectRatio" value="2:3">
+                        <label for="ratio2_3" class="ratio-option" title="2:3 竖长方形">
+                            <div class="ratio-icon ratio-2-3"></div>
+                            <span>2:3</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio3_2" name="aspectRatio" value="3:2">
+                        <label for="ratio3_2" class="ratio-option" title="3:2 横长方形">
+                            <div class="ratio-icon ratio-3-2"></div>
+                            <span>3:2</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio3_4" name="aspectRatio" value="3:4">
+                        <label for="ratio3_4" class="ratio-option" title="3:4 竖长方形">
+                            <div class="ratio-icon ratio-3-4"></div>
+                            <span>3:4</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio4_3" name="aspectRatio" value="4:3">
+                        <label for="ratio4_3" class="ratio-option" title="4:3 横长方形">
+                            <div class="ratio-icon ratio-4-3"></div>
+                            <span>4:3</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio9_16" name="aspectRatio" value="9:16">
+                        <label for="ratio9_16" class="ratio-option" title="9:16 竖长方形">
+                            <div class="ratio-icon ratio-9-16"></div>
+                            <span>9:16</span>
+                        </label>
+                        
+                        <input type="radio" id="ratio16_9" name="aspectRatio" value="16:9">
+                        <label for="ratio16_9" class="ratio-option" title="16:9 横长方形">
+                            <div class="ratio-icon ratio-16-9"></div>
+                            <span>16:9</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 尺寸显示区域（只读展示） -->
+                <div class="form-group" style="display:none">
+                    <label>实际尺寸:</label>
+                    <div class="size-display">
+                        <span id="actualSize">1440 × 1440 像素</span>
+                    </div>
+                    <!-- 隐藏的输入框用于存储实际计算后的宽度和高度值 -->
+                    <input type="hidden" id="width" value="1440">
+                    <input type="hidden" id="height" value="1440">
+                </div>
+                
+                <!-- 随机种子输入 -->
+                <div class="form-group" style="display:none">
+                    <label for="seed">神奇数字:</label>
+                    <input type="number" id="seed" value="101">
+                </div>
+                
+                <!-- 图片格式选择 -->
+                <div class="form-group" style="display:none">
+                    <label for="format">图片类型:</label>
+                    <select id="format">
+                        <option value="jpeg">JPEG图片</option>
+                        <option value="png" selected>PNG图片</option>
+                        <option value="webp">WEBP图片</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 风格选择器 -->
+            <div class="style-selector">
+                <h3>选择绘画风格 <span class="helper-subtitle">👉 点击选择你喜欢的画风</span></h3>
+                <div class="style-categories">
+                    <!-- 合并所有风格选项，不再分类 -->
+                    <div class="style-category">
+                        <div class="style-options">
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="photorealistic" data-prompt="photorealistic, highly detailed photograph, sharp focus">
+                                <span>📸 摄影写实</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="hyperrealistic" data-prompt="hyperrealistic, extremely detailed, ultra-sharp, 8k resolution">
+                                <span>🔍 超写实</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="portrait" data-prompt="realistic portrait photography, professional lighting, detailed facial features">
+                                <span>👤 人像写实</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="macro" data-prompt="macro photography, extreme close-up, shallow depth of field, fine details, high resolution, natural lighting">
+                                <span>🌱 微距摄影</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="ghibli" data-prompt="Studio Ghibli style, Miyazaki inspired, fantasy, detailed, soft lighting" checked>
+                                <span>✨ 吉卜力风格</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="oil" data-prompt="oil painting, textured brushstrokes, canvas texture, rich colors">
+                                <span>🎨 油画风格</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="watercolor" data-prompt="watercolor painting, flowing colors, wet on wet, soft edges">
+                                <span>💦 水彩画风</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="ink" data-prompt="traditional Chinese ink painting, brush and ink, minimal, elegant">
+                                <span>🖌️ 水墨画风</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="anime" data-prompt="anime style, vibrant colors, clean lines, Japanese animation">
+                                <span>🌸 二次元动漫</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="cartoon" data-prompt="cartoon style, flat colors, simple shapes, clean outlines">
+                                <span>📺 卡通平面</span>
+                            </label>
+                            <label class="style-tag">
+                                <input type="radio" name="style" value="pixel" data-prompt="pixel art, 8-bit style, retro game aesthetics, blocky">
+                                <span>👾 像素艺术</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 按钮区域 -->
+            <div class="button-group">
+                <button id="generate" class="btn btn-primary">开始画画!</button>
+                <button id="download" class="btn btn-success">保存到桌面</button>
+                <button id="toggleTheme" class="btn btn-warning">切换夜间模式</button>
+                <button id="showHelp" class="btn btn-info">小帮手</button>
+                <a href="gallery.html" class="btn btn-info">全校画廊</a>
+            </div>
+            
+            <!-- 图片预览区域 -->
+            <div class="preview-container">
+                <h2 class="preview-title">你的画作将出现在这里</h2>
+                <div class="image-container">
+                    <img id="previewImage" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIiBmaWxsPSJub25lIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIzMDAiIHkyPSIyMDAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlN2Y1ZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmMGY5ZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0idXJsKCNiZykiIHJ4PSIxMCIgcnk9IjEwIi8+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMjAiIGZpbGw9IiM3NGMwZmMiIG9wYWNpdHk9IjAuNyIvPjxjaXJjbGUgY3g9IjI1MCIgY3k9IjE2MCIgcj0iMjUiIGZpbGw9IiM1MWNmNjYiIG9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9IjI2MCIgY3k9IjMwIiByPSIxNSIgZmlsbD0iI2ZmYTk0ZCIgb3BhY2l0eT0iMC42Ii8+PHBhdGggZD0iTTgwLDgwIEMxMDAsNjAgMTQwLDkwIDE2MCw3MCBTMjAwLDkwIDIyMCw4MCIgc3Ryb2tlPSIjNGRhYmY3IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWRhc2hhcnJheT0iMSwzIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTQ1LCAxMDApIHJvdGF0ZSgtMTApIj48cGF0aCBkPSJNLTMwLC0yMCBoNjAgdjQwIGgtNjAgeiIgZmlsbD0id2hpdGUiIHJ4PSI1IiByeT0iNSIgc3Ryb2tlPSIjNGRhYmY3IiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIwIiB5PSI3IiBmb250LWZhbWlseT0iJ05vdG8gU2FucyBTQycsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI2MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM0ZGFiZjciPuWRiuivtEFJ5L2g5oOz55S75LuA5LmOPC90ZXh0Pjx0ZXh0IHg9IjAiIHk9IjE4IiBmb250LWZhbWlseT0iJ05vdG8gU2FucyBTQycsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iOSIgZm9udC13ZWlnaHQ9IjUwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzZjNzU3ZCI+54S25ZCO54K55Ye75LqGIOW8gOWni+eUu+e7hyDmjInpkq48L3RleHQ+PC9nPjxwYXRoIGQ9Ik03MCwxNDAgUTEwMCwxNzAgMTMwLDE0MCBUMTkwLDE1MCIgc3Ryb2tlPSIjNTFjZjY2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDU1LDQwKSI+PHBhdGggZD0iTTAsLTEwIEw1LC0xNSBMOCwtNSBMMTgsLTggTDE1LDIgTDI1LDUgTDE1LDggTDE4LDE4IEw4LDE1IEw1LDI1IEwwLDE1IEwtNSwyNSBMLTgsMTUgTC0xOCwxOCBMLTE1LDggTC0yNSw1IEwtMTUsMiBMLTE4LC04IEwtOCwtNSBMLTUsLTE1IFoiIGZpbGw9IiNmZmE5NGQiIG9wYWNpdHk9IjAuOSIvPjwvZz48cGF0aCBkPSJNMjEwLDUwIEwyNDAsNDAgTDIzMCw3MCBMMjYwLDYwIEwyNDAsOTAgTDI3MCw4MCBMMjUwLDExMCIgc3Ryb2tlPSIjNTE5OGZmIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==" alt="你的画作将出现在这里">
+                    
+                    <!-- 加载中提示 - 移到图片容器内 -->
+                    <div id="loading" class="loading-container hidden">
+                        <div class="spinner"></div>
+                        <p>AI正在认真画画中，请稍等...</p>
+                    </div>
+                    
+                    <!-- 贴纸编辑层 -->
+                    <div id="stickerCanvas" class="sticker-canvas"></div>
+                    
+                    <!-- 队列状态显示 -->
+                    <div id="queueStatus" class="queue-status hidden">
+                        <div class="queue-icon">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 5H9V3H15V5Z" fill="currentColor" />
+                                <path d="M13 9H11V15H13V9Z" fill="currentColor" />
+                                <path d="M12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22ZM12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20Z" fill="currentColor" />
+                            </svg>
+                        </div>
+                        <div class="queue-position">排队中: <span id="positionNumber">-</span></div>
+                        <div class="queue-total">总共有 <span id="totalQueue">-</span> 位小朋友在排队</div>
+                        <div class="queue-progress">
+                            <div id="queueProgressBar" class="queue-progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="queue-message">AI老师正在一个一个画画，请稍等一下哦～ <span class="queue-pulse"></span></div>
+                    </div>
+                </div>
+                
+                <!-- 贴纸工具栏 -->
+                <div class="sticker-toolbar">
+                    <h3>添加贴纸让画作更有趣！</h3>
+                    <div class="sticker-container">
+                        <div class="sticker" data-sticker="🌈"><span>🌈</span></div>
+                        <div class="sticker" data-sticker="🌟"><span>🌟</span></div>
+                        <div class="sticker" data-sticker="🦄"><span>🦄</span></div>
+                        <div class="sticker" data-sticker="🦖"><span>🦖</span></div>
+                        <div class="sticker" data-sticker="🚀"><span>🚀</span></div>
+                        <div class="sticker" data-sticker="🎨"><span>🎨</span></div>
+                        <div class="sticker" data-sticker="🎮"><span>🎮</span></div>
+                        <div class="sticker" data-sticker="🏆"><span>🏆</span></div>
+                        <div class="sticker" data-sticker="🐱"><span>🐱</span></div>
+                        <div class="sticker" data-sticker="🐶"><span>🐶</span></div>
+                        <div class="sticker" data-sticker="🍦"><span>🍦</span></div>
+                        <div class="sticker" data-sticker="🍭"><span>🍭</span></div>
+                        <div class="sticker" data-sticker="❤️"><span>❤️</span></div>
+                        <div class="sticker" data-sticker="😊"><span>😊</span></div>
+                        <div class="sticker" data-sticker="👍"><span>👍</span></div>
+                        <div class="sticker" data-sticker="🎁"><span>🎁</span></div>
+                    </div>
+                    <div class="sticker-controls">
+                        <button id="clearStickers" class="btn btn-warning btn-sm">清除贴纸</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 画廊展示区域 -->
+        <div class="gallery-section">
+            <h2 class="section-title">我的画廊</h2>
+            <div id="emptyGallery" class="empty-gallery hidden">
+                <img src="images/empty-gallery.svg" alt="空画廊">
+                <p>你的画廊还是空的，生成的图片会自动保存在这里</p>
+            </div>
+            <div id="galleryItems" class="gallery-grid">
+                <!-- 画廊项会动态添加 -->
+            </div>
+        </div>
+        
+        <!-- 画廊操作按钮 -->
+        <div class="button-group">
+            <button id="clearGallery" class="btn btn-warning">清空画廊</button>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer>
+            <p>© 2025 小朋友的AI绘画乐园 - 快乐创作每一天</p>
+        </footer>
+    </div>
+
+    <!-- 帮助指南对话框 -->
+    <div id="helpGuide" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>小朋友画画指南</h2>
+            <div class="help-steps">
+                <div class="help-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>告诉AI你想画什么</h3>
+                        <p>在"画什么呢"的框框里写下你想画的东西，比如："一只小狗在草地上玩耍"</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>选择画作比例</h3>
+                        <p>选择你想要的画作比例，比如正方形（1:1）或者长方形（16:9）</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>点击"开始画画"</h3>
+                        <p>然后等一小会儿，AI就会帮你画出来啦！</p>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>保存你的画作</h3>
+                        <p>如果你喜欢这幅画，点击"保存到桌面"按钮就可以将画作保存下来，这样你随时都能找到它！</p>
+                    </div>
+                </div>
+            </div>
+            <button id="closeHelp" class="btn btn-primary">我知道啦！</button>
+        </div>
+    </div>
+
+    <!-- 脚本错误处理 -->
+    <script>
+        // 全局错误处理
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('全局JS错误:', message, source, lineno, colno, error);
+            alert('页面出现问题，请刷新后再试。如果问题持续存在，请联系管理员。');
+            return true;
+        };
+        
+        // 脚本加载错误处理
+        function handleScriptError(scriptSrc) {
+            console.error('脚本加载失败:', scriptSrc);
+        }
+    </script>
+
+    <!-- 按顺序加载JS，添加错误处理 -->
+    <script src="js/client.js" onerror="handleScriptError('client.js')"></script>
+    <script src="js/main.js" onerror="handleScriptError('main.js')"></script>
+    <script src="js/queue.js" onerror="handleScriptError('queue.js')"></script>
+    <script src="js/main-queue.js" onerror="handleScriptError('main-queue.js')"></script>
+    <script src="js/gallery.js" onerror="handleScriptError('gallery.js')"></script>
+    <script src="js/stickers.js" onerror="handleScriptError('stickers.js')"></script>
+    <script src="js/sensitive-words.js" onerror="handleScriptError('sensitive-words.js')"></script>
+    
+    <!-- 添加用户信息获取脚本 -->
+    <script>
+        // 学生信息获取配置
+        const STUDENT_INFO_URLS = [
+            'http://172.16.201.191/ai/user_extractor.html',
+            'http://xxpt.bsd.cn/ai/user_extractor.html'
+        ];
+        
+        // 更新学生信息横幅
+        function updateStudentInfoBanner(studentName, studentId) {
+            const banner = document.getElementById('studentInfoBanner');
+            if (!banner) return;
+            
+            if (studentName && studentId) {
+                banner.innerHTML = `当前用户: <strong>${studentName}</strong> (学号: <strong>${studentId}</strong>)`;
+                banner.style.backgroundColor = '#d4edda';
+                banner.style.color = '#155724';
+            } else {
+                banner.innerHTML = `未获取到用户信息 <small>(IP: ${window.location.hostname})</small>`;
+                banner.style.backgroundColor = '#f8d7da';
+                banner.style.color = '#721c24';
+            }
+        }
+        
+        // 从指定URL获取学生信息的函数
+        async function fetchStudentInfoFromUrl(url) {
+            return new Promise((resolve, reject) => {
+                try {
+                    console.log(`尝试从 ${url} 获取学生信息`);
+                    
+                    // 创建iframe来加载提取器页面
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = url;
+                    document.body.appendChild(iframe);
+                    
+                    // 设置超时（8秒）
+                    const timeoutId = setTimeout(() => {
+                        try {
+                            if (document.body.contains(iframe)) {
+                                document.body.removeChild(iframe);
+                            }
+                        } catch(e) {}
+                        reject(new Error(`获取学生信息超时 (${url})`));
+                    }, 8000);
+                    
+                    // 解析源域名
+                    let sourceOrigin = '';
+                    try {
+                        sourceOrigin = new URL(url).origin;
+                    } catch(e) {
+                        console.warn(`无法解析URL origin: ${url}`, e);
+                    }
+                    
+                    // 监听消息
+                    function handleMessage(event) {
+                        // 检查消息来源和数据
+                        if (event.data && (event.data.studentName || event.data.studentId)) {
+                            // 只有当消息中包含学生信息时才处理
+                            clearTimeout(timeoutId);
+                            window.removeEventListener('message', handleMessage);
+                            
+                            try {
+                                if (document.body.contains(iframe)) {
+                                    document.body.removeChild(iframe);
+                                }
+                            } catch(e) {}
+                            
+                            const studentInfo = {
+                                username: event.data.studentName || '',
+                                studentId: event.data.studentId || ''
+                            };
+                            
+                            console.log(`从 ${url} 获取到学生信息:`, studentInfo);
+                            resolve(studentInfo);
+                        }
+                    }
+                    
+                    window.addEventListener('message', handleMessage);
+                    
+                    // iframe加载完成后的处理
+                    iframe.onload = function() {
+                        // 等待2秒后主动请求信息
+                        setTimeout(() => {
+                            try {
+                                if (iframe.contentWindow) {
+                                    console.log(`主动向 ${url} 请求学生信息`);
+                                    iframe.contentWindow.postMessage({ type: 'GET_STUDENT_INFO' }, '*');
+                                }
+                            } catch (e) {
+                                console.error(`向 ${url} 请求信息失败:`, e);
+                            }
+                        }, 2000);
+                    };
+                    
+                    // 处理iframe加载失败
+                    iframe.onerror = function() {
+                        clearTimeout(timeoutId);
+                        window.removeEventListener('message', handleMessage);
+                        try {
+                            if (document.body.contains(iframe)) {
+                                document.body.removeChild(iframe);
+                            }
+                        } catch(e) {}
+                        reject(new Error(`加载学生信息页面失败 (${url})`));
+                    };
+                } catch (error) {
+                    console.error(`创建iframe时出错 (${url}):`, error);
+                    reject(error);
+                }
+            });
+        }
+        
+        // 学生信息获取函数 - 尝试所有URL
+        async function fetchStudentInfo(forceRefresh = false) {
+            console.log('开始获取学生信息', forceRefresh ? '(强制刷新)' : '');
+            
+            // 首先检查localStorage中是否已有学生信息
+            const storedName = localStorage.getItem('username');
+            const storedId = localStorage.getItem('studentId');
+            const lastUpdateTime = localStorage.getItem('lastInfoUpdate');
+            
+            // 获取当前时间
+            const now = new Date().getTime();
+            // 降低缓存时间到1分钟，确保更快获取新用户
+            const cacheExpiryTime = 1 * 60 * 1000; // 1分钟缓存
+            
+            // 只有在非强制刷新模式下且缓存时间有效时才使用缓存
+            if (!forceRefresh && storedName && storedId && lastUpdateTime && (now - parseInt(lastUpdateTime)) < cacheExpiryTime) {
+                console.log(`使用已存储的学生信息: ${storedName} (${storedId})`);
+                updateStudentInfoBanner(storedName, storedId);
+                
+                // 即便使用缓存，也在后台尝试更新 - 这样第一次显示快，后面如果有变更也能更新
+                setTimeout(() => refreshStudentInfo(), 100);
+                
+                return { username: storedName, studentId: storedId };
+            }
+            
+            // 尝试从所有URL获取学生信息
+            return await refreshStudentInfo();
+        }
+        
+        // 从远程刷新学生信息
+        async function refreshStudentInfo() {
+            let lastError = null;
+            
+            for (const url of STUDENT_INFO_URLS) {
+                try {
+                    const info = await fetchStudentInfoFromUrl(url);
+                    
+                    if (info.username && info.studentId) {
+                        const storedName = localStorage.getItem('username');
+                        const storedId = localStorage.getItem('studentId');
+                        
+                        // 检查是否与存储的信息不同（表明用户已更改）
+                        if (info.username !== storedName || info.studentId !== storedId) {
+                            console.log(`检测到用户变更: ${storedName || '无'} -> ${info.username}`);
+                        }
+                        
+                        // 保存到localStorage
+                        localStorage.setItem('username', info.username);
+                        localStorage.setItem('studentId', info.studentId);
+                        localStorage.setItem('lastInfoUpdate', new Date().getTime().toString());
+                        
+                        updateStudentInfoBanner(info.username, info.studentId);
+                        return info;
+                    }
+                } catch (error) {
+                    console.warn(`从 ${url} 获取学生信息失败:`, error);
+                    lastError = error;
+                    // 继续尝试下一个URL
+                }
+            }
+            
+            // 如果都失败了，但有存储的信息，作为备用返回
+            const storedName = localStorage.getItem('username');
+            const storedId = localStorage.getItem('studentId');
+            
+            if (storedName && storedId) {
+                console.log(`获取新信息失败，使用已存储的信息: ${storedName} (${storedId})`);
+                updateStudentInfoBanner(storedName, storedId);
+                return { username: storedName, studentId: storedId };
+            }
+            
+            // 真的没有信息了
+            console.error('所有URL都无法获取学生信息', lastError);
+            updateStudentInfoBanner(null, null);
+            return { username: null, studentId: null };
+        }
+        
+        // 修改生成按钮点击处理函数，确保先检查用户状态
+        async function setupGenerateButton() {
+            console.log('正在设置生成按钮的点击事件...');
+            const generateButton = document.getElementById('generate');
+            if (!generateButton) {
+                console.error('找不到生成按钮');
+                return;
+            }
+            
+            // 移除原始事件监听，避免双重触发
+            generateButton.replaceWith(generateButton.cloneNode(true));
+            // 重新获取新的按钮元素（因为cloneNode后原引用失效）
+            const newGenerateButton = document.getElementById('generate');
+            
+            // 设置新的点击事件
+            newGenerateButton.onclick = async function(event) {
+                // 阻止默认行为
+                event.preventDefault();
+                
+                try {
+                    // 强制刷新用户信息
+                    const studentInfo = await fetchStudentInfo(true);
+                    
+                    if (studentInfo.username && studentInfo.studentId) {
+                        console.log(`准备提交请求，使用学生信息: ${studentInfo.username} (${studentInfo.studentId})`);
+                        
+                        // 检查用户状态（如果函数存在）
+                        if (typeof window.checkSensitiveWordQuota === 'function') {
+                            console.log('正在检查用户状态...');
+                            const userAllowed = await window.checkSensitiveWordQuota();
+                            
+                            if (!userAllowed) {
+                                console.error('用户状态检查未通过，已阻止请求');
+                                return; // 阻止继续处理
+                            }
+                            
+                            console.log('用户状态检查通过，继续处理请求');
+                        } else {
+                            console.warn('未找到checkSensitiveWordQuota函数，跳过状态检查');
+                        }
+                    } else {
+                        console.warn('未能获取学生信息，继续提交请求可能会受限');
+                    }
+                    
+                    // 确保信息已保存到localStorage
+                    if (studentInfo.username) localStorage.setItem('username', studentInfo.username);
+                    if (studentInfo.studentId) localStorage.setItem('studentId', studentInfo.studentId);
+                    
+                    // 直接调用全局generateImage函数
+                    if (typeof window.generateImage === 'function') {
+                        console.log('调用全局generateImage函数');
+                        window.generateImage();
+                    } else {
+                        console.error('找不到可用的图像生成函数');
+                        alert('系统出错，无法生成图像');
+                    }
+                } catch (error) {
+                    console.error('处理生成请求时出错:', error);
+                    alert('系统出错，请稍后再试');
+                }
+            };
+            
+            console.log('生成按钮点击事件设置完成');
+        }
+        
+        // 页面加载时获取学生信息并设置生成按钮
+        document.addEventListener('DOMContentLoaded', function() {
+            // 强制刷新信息，确保获取最新用户
+            fetchStudentInfo(true).then(info => {
+                if (info.username && info.studentId) {
+                    console.log(`页面加载完成，已获取学生信息: ${info.username} (${info.studentId})`);
+                } else {
+                    console.warn('页面加载完成，未能获取学生信息');
+                }
+                
+                // 设置生成按钮
+                setupGenerateButton();
+            });
+            
+            // 设置定时检查用户信息
+            // 每30秒检查一次，看是否需要刷新用户信息
+            setInterval(async () => {
+                try {
+                    console.log('定时检查用户信息...');
+                    const info = await fetchStudentInfo(true);
+                    
+                    if (info.username && info.studentId) {
+                        console.log(`定时检查完成，当前用户: ${info.username} (${info.studentId})`);
+                    }
+                } catch (e) {
+                    console.error('定时检查用户信息出错:', e);
+                }
+            }, 30000);
+        });
+    </script>
+</body>
+</html> 
