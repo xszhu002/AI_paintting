@@ -2,9 +2,9 @@ name: Docker Build and Push
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -31,9 +31,9 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/xszhu002/ai_painting:latest
-            ghcr.io/xszhu002/ai_painting:${{ github.sha }}
-          cache-from: type=registry,ref=ghcr.io/xszhu002/ai_painting:latest
+            ghcr.io/xszhu002/ai_paintting:latest
+            ghcr.io/xszhu002/ai_paintting:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/xszhu002/ai_paintting:latest
           cache-to: type=inline
       
       - name: Image digest

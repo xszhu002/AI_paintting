@@ -2,7 +2,7 @@ version: '3'
 
 services:
   ai-painting:
-    image: ghcr.io/xszhu002/ai_painting:latest
+    image: ghcr.io/xszhu002/ai_paintting:latest
     container_name: ai-painting
     ports:
       - "8000:8000"  # HTTP服务端口
