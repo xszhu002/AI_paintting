@@ -119,9 +119,21 @@ try:
     # 使用环境变量或默认值配置MongoDB连接
     mongo_host = os.environ.get('MONGO_HOST', 'localhost')
     mongo_port = os.environ.get('MONGO_PORT', '27017')
-    mongo_uri = f'mongodb://{mongo_host}:{mongo_port}/'
+    mongo_uri = os.environ.get('MONGO_URI', f'mongodb://{mongo_host}:{mongo_port}/')
     
-    mongo_client = MongoClient(mongo_uri)
+    # 添加连接参数以提高容错性
+    mongo_client = MongoClient(
+        mongo_uri,
+        serverSelectionTimeoutMS=5000,  # 服务器选择超时
+        connectTimeoutMS=5000,          # 连接超时
+        socketTimeoutMS=10000,          # 套接字超时
+        maxPoolSize=50,                 # 连接池大小
+        retryWrites=True                # 重试写入
+    )
+    
+    # 测试连接
+    mongo_client.admin.command('ping')
+    
     db = mongo_client['ai_art_gallery']
     school_gallery = db['school_gallery']
     users = db['users']  # 新增用户集合

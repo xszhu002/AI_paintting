@@ -7,13 +7,47 @@ echo "启动AI绘画乐园服务..."
 echo "准备数据目录..."
 mkdir -p /data
 
-# 修改服务器配置，使用外部MongoDB或内存数据库
+# 修改服务器配置，使用外部MongoDB
 echo "配置MongoDB连接..."
 export MONGO_HOST=${MONGO_HOST:-"localhost"}
 export MONGO_PORT=${MONGO_PORT:-"27017"}
 export MONGO_URI=${MONGO_URI:-"mongodb://${MONGO_HOST}:${MONGO_PORT}/"}
 
 echo "MongoDB连接配置: ${MONGO_URI}"
+
+# 测试MongoDB连接
+echo "测试MongoDB连接..."
+MONGO_OK=false
+for i in {1..10}; do
+    echo "尝试连接MongoDB (${i}/10)..."
+    if python -c "
+from pymongo import MongoClient
+try:
+    client = MongoClient('${MONGO_URI}', serverSelectionTimeoutMS=3000)
+    client.admin.command('ping')
+    print('MongoDB连接成功!')
+    exit(0)
+except Exception as e:
+    print(f'MongoDB连接失败: {e}')
+    exit(1)
+"; then
+        MONGO_OK=true
+        break
+    fi
+    echo "等待2秒后重试..."
+    sleep 2
+done
+
+if [ "$MONGO_OK" = false ]; then
+    echo "警告: 无法连接到MongoDB，应用可能无法正常工作"
+    echo "将继续启动服务，但请确保MongoDB可访问"
+fi
+
+# 打印系统资源信息
+echo "系统资源信息:"
+ulimit -a
+free -m
+nproc
 
 # 初始化管理员用户（如果能连接到MongoDB）
 echo "检查并初始化管理员用户..."
