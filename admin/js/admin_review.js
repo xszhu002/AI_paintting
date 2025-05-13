@@ -266,7 +266,7 @@ function loadArtworks(page = 1, perPage = 12, searchParams = {}) {
     
     if (currentFilter === 'pending') {
         // 待审核使用gallery API，筛选没有approved字段的记录
-        apiUrl = `http://172.16.201.200:8080/api/gallery?page=${page}&per_page=${perPage}&show_all=true&pending=true`;
+        apiUrl = `${API_BASE_URL}/api/gallery?page=${page}&per_page=${perPage}&show_all=true&pending=true`;
         
         // 添加搜索参数
         if (searchQuery) {
@@ -278,7 +278,7 @@ function loadArtworks(page = 1, perPage = 12, searchParams = {}) {
         }
     } else {
         // 其他筛选条件使用gallery API
-        apiUrl = `http://172.16.201.200:8080/api/gallery?page=${page}&per_page=${perPage}&show_all=true`;
+        apiUrl = `${API_BASE_URL}/api/gallery?page=${page}&per_page=${perPage}&show_all=true`;
         
         // 添加筛选条件
         if (currentFilter === 'approved') {
@@ -410,7 +410,7 @@ function loadMoreArtworks() {
     
     if (currentFilter === 'pending') {
         // 待审核使用gallery API，筛选没有approved字段的记录
-        apiUrl = `http://172.16.201.200:8080/api/gallery?page=${currentPage}&per_page=${perPage}&show_all=true&pending=true`;
+        apiUrl = `${API_BASE_URL}/api/gallery?page=${currentPage}&per_page=${perPage}&show_all=true&pending=true`;
         
         // 添加搜索参数
         if (searchQuery) {
@@ -422,7 +422,7 @@ function loadMoreArtworks() {
         }
     } else {
         // 其他筛选条件使用gallery API
-        apiUrl = `http://172.16.201.200:8080/api/gallery?page=${currentPage}&per_page=${perPage}&show_all=true`;
+        apiUrl = `${API_BASE_URL}/api/gallery?page=${currentPage}&per_page=${perPage}&show_all=true`;
         
         // 添加筛选条件
         if (currentFilter === 'approved') {
@@ -512,16 +512,16 @@ function loadMoreArtworks() {
 // 加载统计数据
 function loadStats() {
     // 构建API URL
-    let apiUrl = 'http://172.16.201.200:8080/api/admin/artwork_stats';
+    let apiUrl = `${API_BASE_URL}/api/admin/artwork_stats`;
     
     // 从作品列表API获取统计数据的备用方法
     function getStatsFromGalleryAPI() {
         console.log('从作品列表API获取统计数据');
         
         // 使用三个请求获取不同状态的作品数量
-        const pendingUrl = 'http://172.16.201.200:8080/api/gallery?page=1&per_page=1&show_all=true&pending=true';
-        const approvedUrl = 'http://172.16.201.200:8080/api/gallery?page=1&per_page=1&show_all=true&approved=true';
-        const rejectedUrl = 'http://172.16.201.200:8080/api/gallery?page=1&per_page=1&show_all=true&approved=false';
+        const pendingUrl = `${API_BASE_URL}/api/gallery?page=1&per_page=1&show_all=true&pending=true`;
+        const approvedUrl = `${API_BASE_URL}/api/gallery?page=1&per_page=1&show_all=true&approved=true`;
+        const rejectedUrl = `${API_BASE_URL}/api/gallery?page=1&per_page=1&show_all=true&approved=false`;
         
         Promise.all([
             fetch(pendingUrl, {
@@ -948,7 +948,7 @@ function openArtworkDetails(artworkId, showRejectForm = false) {
     // 如果没有找到缓存数据，从API获取
     if (!cachedArtwork) {
         // 从API获取完整的作品数据
-    fetch(`http://172.16.201.200:8080/api/gallery?artwork_id=${artworkId}&show_all=true`, {
+    fetch(`${API_BASE_URL}/api/gallery?artwork_id=${artworkId}&show_all=true`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -1039,7 +1039,7 @@ function approveArtwork(artworkId) {
     // 显示加载状态
     showLoading('正在审核...');
     
-    fetch('http://172.16.201.200:8080/api/admin/approve_artwork', {
+    fetch(`${API_BASE_URL}/api/admin/approve_artwork`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -1111,7 +1111,7 @@ function rejectArtwork(artworkId, reason) {
     // 显示加载状态
     showLoading('正在处理...');
     
-    fetch('http://172.16.201.200:8080/api/admin/approve_artwork', {
+    fetch(`${API_BASE_URL}/api/admin/approve_artwork`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -1206,7 +1206,7 @@ function batchApprove() {
         return;
     }
     
-    fetch('http://172.16.201.200:8080/api/admin/batch_approve', {
+    fetch(`${API_BASE_URL}/api/admin/batch_approve`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${getAuthToken()}`,
@@ -1249,7 +1249,7 @@ function batchReject(reason = "管理员批量拒绝") {
         return;
     }
     
-    fetch('http://172.16.201.200:8080/api/admin/batch_approve', {
+    fetch(`${API_BASE_URL}/api/admin/batch_approve`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${getAuthToken()}`,
