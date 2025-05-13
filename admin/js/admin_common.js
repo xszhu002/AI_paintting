@@ -2,8 +2,39 @@
  * AI绘画平台 - 管理员共用函数
  */
 
-// API基础URL
-const API_BASE_URL = 'http://172.16.201.200:8080';
+// API基础URL - 动态获取API地址
+const API_BASE_URL = (() => {
+    // 尝试从localStorage获取配置的API地址
+    const savedApiUrl = localStorage.getItem('api_base_url');
+    if (savedApiUrl) return savedApiUrl;
+    
+    // 动态获取当前域名，自动配置API地址
+    const currentHost = window.location.hostname;
+    const currentPort = window.location.port;
+    
+    // 如果是在本地调试（localhost或127.0.0.1）
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+        return 'http://172.16.201.200:8080'; // 本地开发环境使用硬编码地址
+    }
+    
+    // 生产环境：使用当前域名，API端口为8080
+    return `http://${currentHost}:8080`;
+})();
+
+// 在控制台输出当前API基础地址，方便调试
+console.log('当前API地址:', API_BASE_URL);
+
+/**
+ * 设置API基础URL
+ * @param {string} url - 新的API地址
+ */
+function setApiBaseUrl(url) {
+    if (url && url.trim() !== '') {
+        localStorage.setItem('api_base_url', url);
+        return true;
+    }
+    return false;
+}
 
 /**
  * 检查管理员登录状态
