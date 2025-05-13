@@ -180,7 +180,7 @@ function checkAdminLogin() {
     }
     
     // 验证令牌有效性
-    fetch('http://172.16.201.200:8080/api/admin/verify_token', {
+    fetch(`${API_BASE_URL}/api/admin/verify_token`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${adminToken}`,

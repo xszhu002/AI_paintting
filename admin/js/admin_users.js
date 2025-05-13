@@ -2,8 +2,14 @@
  * AI绘画平台 - 用户管理
  */
 
-// API基础URL和页面状态变量
-const API_BASE_URL = 'http://172.16.201.200:8080';
+// 页面状态变量
+let currentPage = 1;
+let totalPages = 1;
+let perPage = 100;
+let currentQuery = '';
+let currentStatusFilter = 'all';
+let selectedUsers = new Set();
+let isLoading = false;
 
 /**
  * 格式化时间戳为可读的日期时间字符串
@@ -23,14 +29,6 @@ function formatTimestamp(timestamp) {
         hour12: false
     });
 }
-
-let currentPage = 1;
-let totalPages = 1;
-let perPage = 100;
-let currentQuery = '';
-let currentStatusFilter = 'all';
-let selectedUsers = new Set();
-let isLoading = false;
 
 /**
  * 检查管理员登录状态

@@ -70,20 +70,6 @@
             display: none;
             margin-bottom: 20px;
         }
-        
-        .settings-link {
-            color: #6c757d;
-            font-size: 14px;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        
-        .settings-panel {
-            display: none;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px dashed #dee2e6;
-        }
     </style>
 </head>
 <body>
@@ -111,24 +97,6 @@
                 
                 <button type="submit" class="btn btn-login">登录</button>
             </form>
-            
-            <div class="text-center mt-3">
-                <a class="settings-link" id="showSettings">高级设置</a>
-            </div>
-            
-            <div class="settings-panel" id="settingsPanel">
-                <div class="form-group">
-                    <label for="apiBaseUrl">API服务器地址</label>
-                    <input type="text" class="form-control" id="apiBaseUrl" placeholder="例如: http://172.16.201.200:8080">
-                </div>
-                <div class="text-right">
-                    <button type="button" class="btn btn-sm btn-secondary" id="resetApiBtn">重置</button>
-                    <button type="button" class="btn btn-sm btn-primary" id="saveApiBtn">保存</button>
-                </div>
-                <div class="mt-2">
-                    <small class="text-muted">当前API地址: <span id="currentApiUrl"></span></small>
-                </div>
-            </div>
         </div>
         
         <div class="login-footer">
@@ -140,36 +108,6 @@
     <script src="js/admin_common.js"></script>
     <script>
     $(document).ready(function() {
-        // 显示当前API地址
-        $('#currentApiUrl').text(API_BASE_URL);
-        
-        // 高级设置显示/隐藏
-        $('#showSettings').on('click', function() {
-            $('#settingsPanel').toggle();
-        });
-        
-        // 保存API地址
-        $('#saveApiBtn').on('click', function() {
-            const newApiUrl = $('#apiBaseUrl').val().trim();
-            if (newApiUrl) {
-                if (setApiBaseUrl(newApiUrl)) {
-                    alert('API地址已保存，页面将刷新以应用更改。');
-                    location.reload();
-                } else {
-                    alert('API地址格式不正确。');
-                }
-            } else {
-                alert('请输入有效的API地址。');
-            }
-        });
-        
-        // 重置API地址
-        $('#resetApiBtn').on('click', function() {
-            localStorage.removeItem('api_base_url');
-            alert('API地址已重置为默认值，页面将刷新以应用更改。');
-            location.reload();
-        });
-        
         // 检查是否已登录
         const token = localStorage.getItem('adminToken');
         if (token) {
