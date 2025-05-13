@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+  # AI绘画应用
   ai-painting:
     image: ghcr.io/xszhu002/ai_paintting:latest
     container_name: ai-painting
@@ -8,11 +9,13 @@ services:
       - "8000:8000"  # HTTP服务端口
       - "8080:8080"  # API服务端口
     volumes:
-      - ./data:/data  # 持久化MongoDB数据
+      - ./data/app:/data  # 应用数据
     restart: unless-stopped
     environment:
-      - MONGO_HOST=localhost
-      - MONGO_PORT=27017
+      - MONGO_HOST=172.16.201.81  # Unraid主机IP
+      - MONGO_PORT=27017  # MongoDB默认端口
+      - MONGO_URI=mongodb://172.16.201.81:27017/  # 完整的连接字符串
       - PORT=8080
       - DEBUG=False
-      - JWT_SECRET=your_secure_jwt_secret  # 建议修改为更安全的密钥 
+      - JWT_SECRET=your_secure_jwt_secret  # 建议修改为更安全的密钥
+    network_mode: "bridge"  # 使用默认桥接网络连接到主机网络 
